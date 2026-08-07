@@ -1,0 +1,17 @@
+{
+  "name": "merit-protocol-contracts",
+  "version": "1.0.0",
+  "description": "Merit Protocol Smart Contracts on Ritual Testnet",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "hardhat": "^2.22.0"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.6.1",
+    "dotenv": "^17.4.2"
+  }
+}

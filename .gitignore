@@ -1,0 +1,29 @@
+# Local Environment & Secrets
+.env
+.env.local
+.env.*.local
+*.pem
+
+# Node dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Hardhat & Foundry output
+contracts/cache/
+contracts/out/
+contracts/broadcast/
+contracts/cache_hh/
+contracts/artifacts_hh/
+
+# Frontend build
+frontend/dist/
+frontend/node_modules/
+.vercel/
+
+# IDE & OS
+.DS_Store
+.vscode/
+.idea/
+*.swp
