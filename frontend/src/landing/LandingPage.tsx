@@ -142,11 +142,11 @@ export default function LandingPage() {
           <span>AUTONOMOUS REPUTATION AND CONTEST REWARD PROTOCOL</span>
         </div>
 
-        {/* 3 DISTINCT LINES FOR EACH CONCEPT */}
-        <h1 className="text-[clamp(42px,6vw,80px)] font-black text-white leading-[1.08] tracking-[-0.03em] max-w-[1100px] mb-8 font-sans uppercase">
-          <span className="block">PROJECTS DEFINE RULES</span>
-          <span className="block text-[#00E575]">CREATORS SUBMIT</span>
-          <span className="block ritual-gradient-text">AI EVALUATES</span>
+        {/* 3 STRICT LINES FORCED WITH BLOCK & BR */}
+        <h1 className="text-[clamp(36px,5.5vw,76px)] font-black text-white leading-[1.12] tracking-[-0.03em] max-w-[1100px] mb-8 font-sans uppercase">
+          <span className="block w-full">PROJECTS DEFINE RULES</span>
+          <span className="block w-full text-[#00E575]">CREATORS SUBMIT</span>
+          <span className="block w-full ritual-gradient-text">AI EVALUATES</span>
         </h1>
 
         <p className="text-base md:text-lg font-medium text-slate-300 max-w-[760px] mb-10 leading-relaxed font-sans">
@@ -327,7 +327,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* DEDICATED WORKFLOW SECTION (SMOOTH SCROLL DESTINATION) */}
+      {/* DEDICATED WORKFLOW SECTION */}
       <section id="workflow" className="relative z-10 max-w-[1400px] mx-auto px-6 py-20 border-t border-[#00E575]/20">
         <div className="mb-14 text-center">
           <span className="inline-block px-3 py-1 bg-[#00E575]/10 text-[#00E575] text-xs font-mono font-bold uppercase tracking-wider border border-[#00E575]/30 mb-3">
