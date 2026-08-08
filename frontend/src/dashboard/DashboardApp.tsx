@@ -1,24 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  ShieldCheck, 
-  Wallet, 
-  Trophy, 
-  Award, 
-  ExternalLink, 
-  CheckCircle2, 
-  Send, 
-  Crown, 
-  Link as LinkIcon, 
-  User, 
-  MessageSquare,
-  PlusCircle,
-  XCircle,
-  FolderPlus,
-  Settings,
-  Sparkles,
-  BarChart3
-} from 'lucide-react';
-import { 
   fetchChainStatus, 
   getAddresses, 
   submitEntryOnChain,
@@ -95,7 +76,7 @@ export default function DashboardApp() {
   async function connectWallet() {
     const ethereum = (window as any).ethereum;
     if (typeof ethereum === 'undefined') {
-      alert('MetaMask is not installed.');
+      alert('MetaMask is not installed');
       return;
     }
     try {
@@ -107,7 +88,7 @@ export default function DashboardApp() {
       }
     } catch (e: any) {
       console.error(e);
-      alert(e.message || "Could not connect wallet.");
+      alert(e.message || "Could not connect wallet");
     } finally {
       setIsConnecting(false);
     }
@@ -192,7 +173,7 @@ export default function DashboardApp() {
       }, 3500);
     } catch (err: any) {
       console.error(err);
-      alert(err.message || "Transaction failed.");
+      alert(err.message || "Transaction failed");
       setIsSubmitting(false);
       setSubmissionStatus(null);
     }
@@ -211,7 +192,7 @@ export default function DashboardApp() {
         type: newCampaignType,
         frequency: newCampaignFreq,
         category: newCampaignCategory,
-        description: newCampaignDesc || "Campaign space with AI evaluation and OG role distribution.",
+        description: newCampaignDesc || "Campaign space with AI evaluation and OG role distribution",
         totalEscrow: newCampaignEscrow,
         topOgLimit: Number(newCampaignOgLimit),
         totalSubmissionsTracked: 0,
@@ -226,30 +207,29 @@ export default function DashboardApp() {
       setProjects(prev => [...prev, createdItem]);
       setIsCreatingCampaign(false);
       setActiveMode('contributor');
-      alert(`Campaign "${newCampaignName}" activated! OG Roles: Top ${newCampaignOgLimit} (${newCampaignFreq}).`);
+      alert(`Campaign ${newCampaignName} activated with Top ${newCampaignOgLimit} OG Roles`);
     }, 1200);
   }
 
   return (
     <div className="min-h-screen bg-[#040705] text-slate-100 font-sans flex flex-col selection:bg-[#00E575] selection:text-[#040705] ritual-bg-grid-sharp select-none">
       
-      {/* Top Header - Ultra Minimal */}
+      {/* Top Header */}
       <header className="border-b border-[#00E575]/30 bg-[#07110c]/90 sticky top-0 z-40 backdrop-blur-md">
         <div className="max-w-[1350px] mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <a href="/index.html" className="w-10 h-10 bg-[#00E575] text-[#040705] flex items-center justify-center font-black border border-[#00E575]">
-              <ShieldCheck className="w-6 h-6 text-[#040705]" />
+              M
             </a>
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-black text-xl text-white uppercase font-mono tracking-tight">Merit</span>
-                <span className="font-bold text-xl text-[#00E575] font-mono">.Protocol</span>
+                <span className="font-bold text-xl text-[#00E575] font-mono">Protocol</span>
               </div>
               <div className="flex items-center gap-2 text-[10px] font-mono text-slate-400">
                 <span className="inline-block w-2 h-2 bg-[#00E575] animate-ping" />
-                <span>RITUAL TESTNET #1979</span>
-                <span>•</span>
-                <span>BLOCK #{blockHeight}</span>
+                <span>RITUAL TESTNET 1979</span>
+                <span>BLOCK {blockHeight}</span>
               </div>
             </div>
           </div>
@@ -265,7 +245,7 @@ export default function DashboardApp() {
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
-                🧑‍💻 Contributor Hub
+                Contributor Hub
               </button>
               <button
                 onClick={() => setActiveMode('owner')}
@@ -275,7 +255,7 @@ export default function DashboardApp() {
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
-                🏢 Project Owner
+                Project Owner
               </button>
             </div>
 
@@ -289,10 +269,9 @@ export default function DashboardApp() {
               <button
                 onClick={connectWallet}
                 disabled={isConnecting}
-                className="btn-ritual-sharp h-10 px-5 uppercase tracking-wider flex items-center gap-2"
+                className="btn-ritual-sharp h-10 px-5 uppercase tracking-wider flex items-center gap-2 font-bold"
               >
-                <Wallet className="w-4 h-4" />
-                <span>{isConnecting ? "Connecting..." : "Connect Wallet"}</span>
+                <span>{isConnecting ? "Connecting" : "Connect Wallet"}</span>
               </button>
             )}
           </div>
@@ -307,25 +286,22 @@ export default function DashboardApp() {
           <div className="space-y-8">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#00E575]/20 pb-6">
               <div>
-                <h1 className="text-3xl font-black text-white uppercase tracking-tight">Active Contests & Campaigns</h1>
+                <h1 className="text-3xl font-black text-white uppercase tracking-tight">Active Contests and Campaigns</h1>
                 <p className="text-xs font-mono text-slate-400 mt-1">
-                  Click any contest or project campaign card below to submit your X post link + Discord username or inspect live rankings.
+                  Select any contest or project campaign below to submit your post link and discord handle or inspect live rankings
                 </p>
               </div>
             </div>
 
-            {/* 2 CLEAN HORIZONTAL COLUMNS */}
+            {/* 2 HORIZONTAL COLUMNS */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               
               {/* COLUMN 1: ONE-OFF CONTESTS */}
               <div className="glass-card-sharp p-6 space-y-6 border-t-4 border-t-[#00E575]">
                 <div className="flex items-center justify-between border-b border-[#00E575]/20 pb-4 font-mono">
-                  <div className="flex items-center gap-2">
-                    <Trophy className="w-5 h-5 text-[#00E575]" />
-                    <h2 className="font-black text-white text-lg uppercase">One-Off Contests</h2>
-                  </div>
+                  <h2 className="font-black text-white text-lg uppercase">One-Off Contests</h2>
                   <span className="text-[11px] text-[#00E575] font-bold bg-[#00E575]/10 px-2.5 py-1 border border-[#00E575]/30">
-                    1 SUBMISSION PER ENTRY
+                    SINGLE ENTRY PER USER
                   </span>
                 </div>
 
@@ -337,7 +313,7 @@ export default function DashboardApp() {
                       className="p-6 bg-[#040705] border border-[#00E575]/30 hover:border-[#00E575] transition-all cursor-pointer group space-y-3 hover:bg-[#07110c]"
                     >
                       <div className="flex justify-between items-center font-mono text-xs">
-                        <span className="text-[#00E575] font-bold">CONTEST #{c.id}</span>
+                        <span className="text-[#00E575] font-bold">CONTEST {c.id}</span>
                         <span className="text-white font-black font-mono px-3 py-1 bg-[#00E575]/15 border border-[#00E575]/40">
                           {c.totalEscrow} MERIT ESCROW
                         </span>
@@ -346,11 +322,9 @@ export default function DashboardApp() {
                       <p className="text-xs text-slate-400 leading-relaxed">{c.description}</p>
                       
                       <div className="pt-3 border-t border-[#00E575]/20 flex items-center justify-between text-xs font-mono text-slate-300">
-                        <span className="text-[#00E575] font-bold flex items-center gap-1">
-                          <Crown className="w-3.5 h-3.5" /> Top {c.topOgLimit} Get OG Role
-                        </span>
-                        <span className="group-hover:translate-x-1 transition-transform text-white font-bold flex items-center gap-1">
-                          Click to Participate ➔
+                        <span className="text-[#00E575] font-bold">Top {c.topOgLimit} Earn OG Role</span>
+                        <span className="group-hover:translate-x-1 transition-transform text-white font-bold">
+                          Participate Now
                         </span>
                       </div>
                     </div>
@@ -358,15 +332,12 @@ export default function DashboardApp() {
                 </div>
               </div>
 
-              {/* COLUMN 2: CONTINUOUS PROJECT CAMPAIGNS (TRACK 50+ POSTS) */}
+              {/* COLUMN 2: CONTINUOUS PROJECT CAMPAIGNS */}
               <div className="glass-card-sharp p-6 space-y-6 border-t-4 border-t-emerald-400">
                 <div className="flex items-center justify-between border-b border-[#00E575]/20 pb-4 font-mono">
-                  <div className="flex items-center gap-2">
-                    <FolderPlus className="w-5 h-5 text-emerald-400" />
-                    <h2 className="font-black text-white text-lg uppercase">Project Campaigns</h2>
-                  </div>
+                  <h2 className="font-black text-white text-lg uppercase">Project Campaigns</h2>
                   <span className="text-[11px] text-emerald-400 font-bold bg-emerald-500/10 px-2.5 py-1 border border-emerald-500/30">
-                    TRACKS 50+ POSTS / OG ROLES
+                    CONTINUOUS POST TRACKING
                   </span>
                 </div>
 
@@ -378,8 +349,8 @@ export default function DashboardApp() {
                       className="p-6 bg-[#040705] border border-[#00E575]/30 hover:border-[#00E575] transition-all cursor-pointer group space-y-3 hover:bg-[#07110c]"
                     >
                       <div className="flex justify-between items-center font-mono text-xs">
-                        <span className="text-emerald-400 font-bold flex items-center gap-1">
-                          <Crown className="w-3.5 h-3.5" /> TOP {p.topOgLimit} GET OG ROLE ({p.frequency})
+                        <span className="text-emerald-400 font-bold">
+                          TOP {p.topOgLimit} GET OG ROLE ({p.frequency})
                         </span>
                         <span className="text-white font-black font-mono px-3 py-1 bg-[#00E575]/15 border border-[#00E575]/40">
                           {p.totalEscrow} MERIT ESCROW
@@ -390,8 +361,8 @@ export default function DashboardApp() {
                       
                       <div className="pt-3 border-t border-[#00E575]/20 flex items-center justify-between text-xs font-mono text-slate-300">
                         <span className="text-slate-400">Tracked Submissions: <strong className="text-white">{p.totalSubmissionsTracked} Posts</strong></span>
-                        <span className="group-hover:translate-x-1 transition-transform text-white font-bold flex items-center gap-1">
-                          Click to Participate ➔
+                        <span className="group-hover:translate-x-1 transition-transform text-white font-bold">
+                          Participate Now
                         </span>
                       </div>
                     </div>
@@ -403,7 +374,7 @@ export default function DashboardApp() {
           </div>
         )}
 
-        {/* MODE 2: PROJECT OWNER WORKSPACE (CREATE CAMPAIGN) */}
+        {/* MODE 2: PROJECT OWNER WORKSPACE */}
         {activeMode === 'owner' && (
           <div className="glass-card-sharp p-8 space-y-6 max-w-3xl mx-auto border-2 border-[#00E575]">
             <div className="border-b border-[#00E575]/20 pb-4">
@@ -411,20 +382,20 @@ export default function DashboardApp() {
                 Open New Contest or Project Campaign
               </h2>
               <p className="text-xs font-mono text-slate-400">
-                Configure prize escrow pool, select cycle frequency (weekly/monthly), and set mandatory tag criteria.
+                Configure prize escrow pool select cycle frequency and set mandatory tag criteria
               </p>
             </div>
 
             <form onSubmit={handleCreateCampaign} className="space-y-6 font-mono text-xs">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-slate-300 mb-2 uppercase font-bold">CAMPAIGN / CONTEST NAME</label>
+                  <label className="block text-slate-300 mb-2 uppercase font-bold">CAMPAIGN NAME</label>
                   <input
                     type="text"
                     required
                     value={newCampaignName}
                     onChange={(e) => setNewCampaignName(e.target.value)}
-                    placeholder="e.g. Ritual AI Hackathon Campaign"
+                    placeholder="Ritual AI Hackathon Campaign"
                     className="w-full bg-[#040705] border border-[#00E575]/40 px-4 py-3.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-[#00E575]"
                   />
                 </div>
@@ -450,13 +421,13 @@ export default function DashboardApp() {
                     onChange={(e: any) => setNewCampaignFreq(e.target.value)}
                     className="w-full bg-[#040705] border border-[#00E575]/40 px-4 py-3.5 text-xs text-white focus:outline-none focus:border-[#00E575]"
                   >
-                    <option value="MONTHLY">Monthly (Hàng Tháng)</option>
-                    <option value="WEEKLY">Weekly (Hàng Tuần)</option>
+                    <option value="MONTHLY">Monthly</option>
+                    <option value="WEEKLY">Weekly</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-slate-300 mb-2 uppercase font-bold">OG ROLES (E.G. 3 OR 4)</label>
+                  <label className="block text-slate-300 mb-2 uppercase font-bold">OG ROLES</label>
                   <input
                     type="number"
                     value={newCampaignOgLimit}
@@ -466,7 +437,7 @@ export default function DashboardApp() {
                 </div>
 
                 <div>
-                  <label className="block text-slate-300 mb-2 uppercase font-bold">ESCROW PRIZE (MERIT)</label>
+                  <label className="block text-slate-300 mb-2 uppercase font-bold">ESCROW PRIZE MERIT</label>
                   <input
                     type="number"
                     value={newCampaignEscrow}
@@ -477,12 +448,12 @@ export default function DashboardApp() {
               </div>
 
               <div>
-                <label className="block text-slate-300 mb-2 uppercase font-bold">DESCRIPTION & RUBRIC</label>
+                <label className="block text-slate-300 mb-2 uppercase font-bold">DESCRIPTION AND RUBRIC</label>
                 <textarea
                   rows={3}
                   value={newCampaignDesc}
                   onChange={(e) => setNewCampaignDesc(e.target.value)}
-                  placeholder="Describe campaign rules..."
+                  placeholder="Describe campaign evaluation criteria"
                   className="w-full bg-[#040705] border border-[#00E575]/40 px-4 py-3.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-[#00E575]"
                 />
               </div>
@@ -524,7 +495,7 @@ export default function DashboardApp() {
                 disabled={isCreatingCampaign}
                 className="btn-ritual-sharp w-full h-14 text-xs font-mono uppercase tracking-wider font-bold"
               >
-                {isCreatingCampaign ? "Saving & Locking Escrow..." : "Activate Campaign & Lock Escrow Prize"}
+                {isCreatingCampaign ? "Saving and Locking Escrow" : "Activate Campaign and Lock Escrow Prize"}
               </button>
             </form>
           </div>
@@ -532,7 +503,7 @@ export default function DashboardApp() {
 
       </main>
 
-      {/* UNIFIED ITEM MODAL (OPENS WHEN CLICKING ANY CONTEST/CAMPAIGN CARD) */}
+      {/* UNIFIED ITEM MODAL */}
       {activeModalItem && (
         <div className="fixed inset-0 z-50 bg-[#040705]/90 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 font-mono">
           <div className="max-w-3xl w-full glass-card-sharp p-6 space-y-6 border-2 border-[#00E575] max-h-[90vh] overflow-y-auto">
@@ -541,7 +512,7 @@ export default function DashboardApp() {
             <div className="flex items-start justify-between border-b border-[#00E575]/20 pb-4">
               <div>
                 <span className="text-xs text-[#00E575] font-bold block mb-1">
-                  {activeModalItem.type === 'CONTEST' ? 'ONE-OFF CONTEST' : 'PROJECT CAMPAIGN'} :: {activeModalItem.category}
+                  {activeModalItem.type === 'CONTEST' ? 'ONE-OFF CONTEST' : 'PROJECT CAMPAIGN'} {activeModalItem.category}
                 </span>
                 <h2 className="text-2xl font-black text-white uppercase">{activeModalItem.name}</h2>
                 <p className="text-xs text-slate-400 mt-1">{activeModalItem.description}</p>
@@ -549,9 +520,9 @@ export default function DashboardApp() {
 
               <button
                 onClick={() => setActiveModalItem(null)}
-                className="text-slate-400 hover:text-white p-1"
+                className="text-slate-400 hover:text-white px-2 py-1 border border-[#00E575]/30 text-xs font-bold uppercase"
               >
-                <XCircle className="w-6 h-6" />
+                CLOSE
               </button>
             </div>
 
@@ -565,7 +536,7 @@ export default function DashboardApp() {
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
-                ✍️ Nộp Link X
+                Submit Post Link
               </button>
               <button
                 onClick={() => setModalTab('leaderboard')}
@@ -575,7 +546,7 @@ export default function DashboardApp() {
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
-                🏆 Xem Leaderboard & Ranking
+                Leaderboard and Rankings
               </button>
             </div>
 
@@ -585,9 +556,8 @@ export default function DashboardApp() {
                 <form onSubmit={handleProjectSubmit} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-mono uppercase text-slate-300 mb-2 flex items-center gap-1.5 font-bold">
-                        <LinkIcon className="w-4 h-4 text-[#00E575]" />
-                        <span>1. X / Twitter Post Link</span>
+                      <label className="block text-xs font-mono uppercase text-slate-300 mb-2 font-bold">
+                        1. X Post Link
                       </label>
                       <input
                         type="url"
@@ -600,16 +570,15 @@ export default function DashboardApp() {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-mono uppercase text-slate-300 mb-2 flex items-center gap-1.5 font-bold">
-                        <MessageSquare className="w-4 h-4 text-[#00E575]" />
-                        <span>2. Discord Username</span>
+                      <label className="block text-xs font-mono uppercase text-slate-300 mb-2 font-bold">
+                        2. Discord Username
                       </label>
                       <input
                         type="text"
                         required
                         value={discordHandle}
                         onChange={(e) => setDiscordHandle(e.target.value)}
-                        placeholder="e.g. builder#1234 or @discord_user"
+                        placeholder="builder#1234 or @discord_user"
                         className="w-full bg-[#07110c] border border-[#00E575]/40 px-4 py-3 text-xs font-mono text-white placeholder-slate-600 focus:outline-none focus:border-[#00E575]"
                       />
                     </div>
@@ -618,10 +587,9 @@ export default function DashboardApp() {
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="btn-ritual-sharp h-13 px-8 text-xs font-mono uppercase tracking-wider flex items-center gap-3 w-full justify-center font-bold"
+                    className="btn-ritual-sharp h-13 px-8 text-xs font-mono uppercase tracking-wider flex items-center justify-center font-bold w-full"
                   >
-                    <Send className="w-4 h-4" />
-                    <span>{isSubmitting ? "Signing & Auto-Fetching X Data..." : `Sign Wallet & Submit Entry to ${activeModalItem.name}`}</span>
+                    <span>{isSubmitting ? "Signing and Auto-Fetching Data" : `Sign Wallet and Submit Entry to ${activeModalItem.name}`}</span>
                   </button>
                 </form>
 
@@ -629,16 +597,13 @@ export default function DashboardApp() {
                 {txHash && (
                   <div className="p-5 bg-[#08150e] border-2 border-[#00E575] font-mono text-xs space-y-3">
                     <div className="flex items-center justify-between text-[#00E575] font-black uppercase text-sm">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle2 className="w-5 h-5 text-[#00E575]" />
-                        <span>TRANSACTION BROADCASTED ON RITUAL TESTNET</span>
-                      </div>
-                      <span className="bg-[#00E575] text-[#040705] px-2 py-0.5 text-[10px] font-bold">LIVE ON-CHAIN</span>
+                      <span>TRANSACTION BROADCASTED ON RITUAL TESTNET</span>
+                      <span className="bg-[#00E575] text-[#040705] px-2 py-0.5 text-[10px] font-bold">LIVE ON CHAIN</span>
                     </div>
 
                     <div className="bg-[#040705] p-3 border border-[#00E575]/40 flex flex-col md:flex-row md:items-center justify-between gap-3">
                       <div className="overflow-hidden">
-                        <span className="text-[10px] text-slate-400 block mb-1 uppercase">TRANSACTION HASH (TXHASH)</span>
+                        <span className="text-[10px] text-slate-400 block mb-1 uppercase">TRANSACTION HASH TXHASH</span>
                         <span className="text-xs text-white font-bold tracking-wider select-all break-all">{txHash}</span>
                       </div>
 
@@ -646,10 +611,9 @@ export default function DashboardApp() {
                         href={`https://explorer.ritualfoundation.org/tx/${txHash}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="btn-ritual-sharp px-4 py-2 text-xs font-mono uppercase flex items-center gap-1.5 shrink-0 justify-center font-bold"
+                        className="btn-ritual-sharp px-4 py-2 text-xs font-mono uppercase flex items-center justify-center font-bold shrink-0"
                       >
-                        <span>View Explorer</span>
-                        <ExternalLink className="w-3.5 h-3.5" />
+                        View Explorer
                       </a>
                     </div>
                   </div>
@@ -663,17 +627,11 @@ export default function DashboardApp() {
                       : 'bg-red-950/30 border-red-500'
                   }`}>
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 font-black text-sm uppercase">
+                      <div className="font-black text-sm uppercase">
                         {latestEvaluationResult.hasPassedHardReqs ? (
-                          <>
-                            <CheckCircle2 className="w-5 h-5 text-[#00E575]" />
-                            <span className="text-[#00E575]">PASSED — HIGH QUALITY SCORE</span>
-                          </>
+                          <span className="text-[#00E575]">PASSED HIGH QUALITY SCORE</span>
                         ) : (
-                          <>
-                            <XCircle className="w-5 h-5 text-red-500" />
-                            <span className="text-red-400">FAILED — LOW SCORE PENALTY</span>
-                          </>
+                          <span className="text-red-400">FAILED LOW SCORE PENALTY</span>
                         )}
                       </div>
                       <span className={`text-xl font-black px-3 py-1 border ${
@@ -686,8 +644,8 @@ export default function DashboardApp() {
                     </div>
 
                     <div className="bg-[#040705] p-4 border border-[#00E575]/30 space-y-2">
-                      <span className="text-[10px] text-slate-400 block uppercase">AUTO-FETCHED TWEET TEXT & RITUAL AI REASON</span>
-                      <pre className="text-xs text-slate-200 whitespace-pre-wrap leading-relaxed">
+                      <span className="text-[10px] text-slate-400 block uppercase">AUTO FETCHED TWEET TEXT AND RITUAL AI REASON</span>
+                      <pre className="text-xs text-slate-200 whitespace-pre-wrap leading-relaxed font-mono">
                         {latestEvaluationResult.reason}
                       </pre>
                     </div>
@@ -715,9 +673,8 @@ export default function DashboardApp() {
                       {leaderboard.map((item, idx) => (
                         <tr key={idx} className={`hover:bg-[#00E575]/10 transition-colors ${item.isOgWinner ? 'bg-[#00E575]/5' : ''}`}>
                           <td className="py-3 px-3 font-bold text-[#00E575]">#{idx + 1}</td>
-                          <td className="py-3 px-3 font-bold text-white flex items-center gap-1">
-                            <MessageSquare className="w-3.5 h-3.5 text-[#00E575]" />
-                            <span>{item.discordHandle || "discord_user#0001"}</span>
+                          <td className="py-3 px-3 font-bold text-white">
+                            {item.discordHandle || "discord_user#0001"}
                           </td>
                           <td className="py-3 px-3 text-slate-300 font-medium">{item.submitter}</td>
                           <td className="py-3 px-3">
@@ -725,17 +682,16 @@ export default function DashboardApp() {
                               href={item.contentUrl}
                               target="_blank"
                               rel="noreferrer"
-                              className="text-[#00E575] underline flex items-center gap-1 font-bold"
+                              className="text-[#00E575] underline font-bold"
                             >
-                              <span>View Post</span>
-                              <ExternalLink className="w-3 h-3" />
+                              View Post
                             </a>
                           </td>
                           <td className="py-3 px-3 font-bold text-white">{item.finalScore} / 100</td>
                           <td className="py-3 px-3">
                             {item.isOgWinner ? (
-                              <span className="px-2 py-0.5 bg-[#00E575] text-[#040705] font-black text-[10px] uppercase flex items-center gap-1 w-max border border-[#00E575]">
-                                <Crown className="w-3 h-3" /> OG QUALIFIED 🏆
+                              <span className="px-2 py-0.5 bg-[#00E575] text-[#040705] font-black text-[10px] uppercase border border-[#00E575]">
+                                OG QUALIFIED
                               </span>
                             ) : (
                               <span className="text-slate-500 text-[11px]">CONTRIBUTOR</span>
