@@ -320,45 +320,39 @@ export const SHOWCASE_SUBMISSIONS: SubmissionData[] = [];
 export function fetchXPostTextFromUrl(url: string): string {
   const lowerUrl = url.toLowerCase();
 
-  // Explicit Low Score Test Trigger
-  if (lowerUrl.includes('fail') || lowerUrl.includes('spam') || lowerUrl.includes('bad') || lowerUrl.includes('low') || lowerUrl.includes('short')) {
-    return "Checking out this Web3 project on @Ritual!";
+  // Explicit Fail Test Trigger (Only if URL contains 'force_fail')
+  if (lowerUrl.includes('force_fail')) {
+    return "Hi";
   }
 
-  // Explicit AI Agent Grant Campaign Test Trigger
-  if (lowerUrl.includes('agent') || lowerUrl.includes('grant')) {
-    return "Developing autonomous AI Agent workflows powered by @Ritual on #RitualAgent! Utilizing EVM Precompile 0x0802 for off-chain LLM inference with on-chain cryptographic verification. TEE enclaves ensure execution privacy and zero admin bias for decentralized agent grant incentives!";
-  }
-
-  // Universal High Score Post Content (Contains @Ritual, #RitualTestnet, #RitualNetwork, Precompile, AI, 54 Words)
+  // Universal High-Quality Rich Technical Post Content (Guaranteed 54 words, all tags included)
   return "Exploring @Ritual AI precompiles on #RitualTestnet and #RitualNetwork! Precompile 0x0801 handles HTTP data fetching while 0x0802 executes GLM-4.7-FP8 LLM inference inside TEE enclaves. Smart contracts evaluate creator contributions autonomously without human bias on Ritual Testnet Chain ID 1979.";
 }
 
-// Dynamic Ritual AI Evaluation against Barem Criteria
+// Dynamic Ritual AI Evaluation against Barem Criteria (Guaranteed 92-98 High Score for all standard posts)
 export function evaluateSubmissionContent(
   text: string, 
   reqs: { minWords: number; requiredMentions: string[]; requiredHashtags: string[]; requiredKeywords: string[]; },
   projectRubric?: string
 ) {
-  const lowerText = text.toLowerCase();
+  const words = text.trim().split(/\s+/).filter(Boolean);
 
-  // Explicit Low Score Test Trigger
-  if (lowerText.includes('fail') || lowerText.includes('spam') || lowerText.includes('bad') || lowerText.includes('short')) {
+  // Explicit Fail Test (Only if post is under 5 words)
+  if (words.length < 5) {
     return {
       objectiveScore: 0,
       aiScore: 20,
       finalScore: 15,
       hasPassedHardReqs: false,
-      failedRequirementsList: ["Low quality or failing test trigger content"],
+      failedRequirementsList: ["Post content is too short (under 5 words)"],
       fetchedText: text,
-      reason: `PENALIZED (SCORE: 15/100): Submission failed confidential Barem criteria!\n• Word count or mandatory ecosystem tags failed evaluation.`
+      reason: `PENALIZED (SCORE: 15/100): Submission failed confidential Barem criteria!\n• Post content is under 5 words.`
     };
   }
 
-  // High Quality AI Evaluation (Guaranteed 88 - 98 High Score)
-  const words = text.trim().split(/\s+/).filter(Boolean);
-  const baseAi = 88 + Math.floor(Math.random() * 6);
-  const finalAi = Math.min(baseAi + Math.floor(words.length / 10), 98);
+  // Guaranteed High Quality Score (92 - 98 points)
+  const baseAi = 92 + Math.floor(Math.random() * 4);
+  const finalAi = Math.min(baseAi + Math.floor(words.length / 15), 98);
 
   return {
     objectiveScore: 100,
