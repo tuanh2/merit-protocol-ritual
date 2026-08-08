@@ -270,6 +270,45 @@ export const SHOWCASE_CAMPAIGNS: CampaignData[] = [
       requiredHashtags: ["#RitualNetwork"],
       requiredKeywords: ["AI"],
     }
+  },
+  {
+    id: 2,
+    creatorWallet: "0x8B376915e28562eed544e3e3B74a3D063A401662",
+    name: "Ritual Autonomous AI Agent Grant Campaign",
+    frequency: "WEEKLY",
+    category: "AI Agent Grant",
+    description: "Weekly campaign incentivizing developers building autonomous AI Agents and TEE workloads on Ritual Testnet.",
+    hiddenBaremCriteria: [
+      "1. Technical depth on Autonomous AI Agent architecture",
+      "2. Explanation of Precompile 0x0802 LLM execution",
+      "3. TEE enclave privacy and security verification",
+      "4. Mandatory mention @Ritual verified",
+      "5. Mandatory hashtag #RitualAgent verified",
+      "6. Keyword 'Agent' present in post body",
+      "7. Word count >= 50 words",
+      "8. Code snippet or architectural diagram quality",
+      "9. Developer guide clarity",
+      "10. Smart contract interaction accuracy",
+      "11. Absence of spam or duplicate entries",
+      "12. Explanation of decentralized inference",
+      "13. Originality of agent use-case",
+      "14. Alignment with Weekly Grant guidelines",
+      "15. Authentic developer voice",
+      "16. Absence of superficial hype",
+      "17. Value contribution to Ritual AI ecosystem",
+      "18. Accuracy regarding EVM precompile calls",
+      "19. Community developer engagement",
+      "20. Autonomous AI evaluation compliance"
+    ],
+    totalEscrow: "10000 MERIT",
+    topOgLimit: 5,
+    totalSubmissionsTracked: 0,
+    requirements: {
+      minWords: 50,
+      requiredMentions: ["@Ritual"],
+      requiredHashtags: ["#RitualAgent"],
+      requiredKeywords: ["Agent"],
+    }
   }
 ];
 
