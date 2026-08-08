@@ -25,7 +25,10 @@ import {
   Check,
   Terminal,
   XCircle,
-  FileText
+  FileText,
+  FolderPlus,
+  Settings,
+  Crown
 } from 'lucide-react';
 import { 
   fetchChainStatus, 
@@ -35,27 +38,32 @@ import {
   switchOrAddRitualChain,
   evaluateSubmissionContent,
   publicClient,
+  SHOWCASE_PROJECTS,
   SHOWCASE_CONTESTS, 
   SHOWCASE_LEADERBOARD, 
   SHOWCASE_SUBMISSIONS,
+  ProjectData,
   ContestData,
   SubmissionData,
   LeaderboardItem
 } from '../services/rpc';
 
 export default function DashboardApp() {
-  const [activeTab, setActiveTab] = useState<'overview' | 'contests' | 'console' | 'reputation' | 'leaderboard'>('contests');
+  const [activeTab, setActiveTab] = useState<'projects' | 'contests' | 'console' | 'reputation' | 'leaderboard'>('projects');
   const [account, setAccount] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [blockHeight, setBlockHeight] = useState<number>(104520);
   const [isRpcOnline, setIsRpcOnline] = useState(true);
   const [isMockMode, setIsMockMode] = useState(true);
 
-  // Contests & Submissions State
+  // Projects State
+  const [projects, setProjects] = useState<ProjectData[]>(SHOWCASE_PROJECTS);
+  const [selectedProject, setSelectedProject] = useState<ProjectData>(SHOWCASE_PROJECTS[0]);
+
+  // Submissions & Leaderboard State
   const [contests, setContests] = useState<ContestData[]>(SHOWCASE_CONTESTS);
   const [leaderboard, setLeaderboard] = useState<LeaderboardItem[]>(SHOWCASE_LEADERBOARD);
   const [submissions, setSubmissions] = useState<SubmissionData[]>(SHOWCASE_SUBMISSIONS);
-  const [selectedContest, setSelectedContest] = useState<ContestData | null>(SHOWCASE_CONTESTS[0]);
 
   // Submission Form State
   const [submissionUrl, setSubmissionUrl] = useState('https://x.com/user/status/19824001');
@@ -65,21 +73,23 @@ export default function DashboardApp() {
   const [txHash, setTxHash] = useState<string | null>(null);
   const [latestEvaluationResult, setLatestEvaluationResult] = useState<any | null>(null);
 
-  // New Contest Form State
-  const [newTitle, setNewTitle] = useState('');
-  const [newDesc, setNewDesc] = useState('');
-  const [newPrize, setNewPrize] = useState('1000');
-  const [newWinners, setNewWinners] = useState('3');
-  const [newMinWords, setNewMinWords] = useState('30');
-  const [newMentions, setNewMentions] = useState('@Ritual');
-  const [newHashtags, setNewHashtags] = useState('#RitualTestnet');
-  const [isCreatingContest, setIsCreatingContest] = useState(false);
+  // New Project Settings State
+  const [newProjName, setNewProjName] = useState('');
+  const [newProjCategory, setNewProjCategory] = useState('Web3 Infrastructure');
+  const [newProjDesc, setNewProjDesc] = useState('');
+  const [newProjEscrow, setNewProjEscrow] = useState('3000');
+  const [newProjOgLimit, setNewProjOgLimit] = useState('3');
+  const [newProjMinWords, setNewProjMinWords] = useState('50');
+  const [newProjMention, setNewProjMention] = useState('@Ritual');
+  const [newProjHashtag, setNewProjHashtag] = useState('#RitualTestnet');
+  const [newProjKeyword, setNewProjKeyword] = useState('Precompile');
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
 
   // User Profile
   const [userReputation, setUserReputation] = useState(463);
   const [userRole, setUserRole] = useState('Verified Contributor');
 
-  // Load RPC Chain Status on Page Load (Read-Only RPC First)
+  // Load RPC Chain Status
   useEffect(() => {
     async function loadStatus() {
       const status = await fetchChainStatus();
@@ -91,11 +101,11 @@ export default function DashboardApp() {
     return () => clearInterval(interval);
   }, []);
 
-  // Connect MetaMask Wallet
+  // Connect Wallet
   async function connectWallet() {
     const ethereum = (window as any).ethereum;
     if (typeof ethereum === 'undefined') {
-      alert('MetaMask is not installed. Please install MetaMask to interact with Ritual Testnet.');
+      alert('MetaMask is not installed.');
       return;
     }
     try {
@@ -107,57 +117,56 @@ export default function DashboardApp() {
       }
     } catch (e: any) {
       console.error(e);
-      alert(e.message || "Could not connect to wallet.");
+      alert(e.message || "Could not connect wallet.");
     } finally {
       setIsConnecting(false);
     }
   }
 
-  // Handle Live On-Chain Contest Submission with Real Tag & Content Evaluation
-  async function handleSubmit(e: React.FormEvent) {
+  // Handle Project Submission & AI Evaluation
+  async function handleProjectSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!selectedContest) return;
+    if (!selectedProject) return;
 
     const contentToEvaluate = submissionText || submissionUrl;
     if (!contentToEvaluate) {
-      alert("Please enter your post URL or post text content.");
+      alert("Please enter your post text content or post URL.");
       return;
     }
 
     setIsSubmitting(true);
     setSubmissionStatus('AWAITING_WALLET_SIGNATURE');
     setTxHash(null);
-    setLatestEvaluationResult(null);
 
-    // Run Real Requirement & AI Evaluation Engine
-    const evalResult = evaluateSubmissionContent(contentToEvaluate, selectedContest);
+    // Real Requirement & AI Evaluation Engine against Project's Custom Settings
+    const evalResult = evaluateSubmissionContent(contentToEvaluate, selectedProject.requirements);
     setLatestEvaluationResult(evalResult);
 
     try {
       if (account) {
-        // Send Real Transaction to Ritual Testnet via MetaMask
-        const hash = await submitEntryOnChain(selectedContest.id, submissionUrl, account);
+        // Send Real Transaction on Ritual Testnet via MetaMask
+        const hash = await submitEntryOnChain(selectedProject.id, submissionUrl, account);
         setTxHash(hash);
         setSubmissionStatus('TX_BROADCASTED_ON_RITUAL');
       } else {
-        // Fallback demo hash
         const mockHash = `0x${Array.from({length: 64}, () => Math.floor(Math.random()*16).toString(16)).join('')}`;
         setTxHash(mockHash);
         setSubmissionStatus('SUBMITTED_ANONYMOUS');
       }
 
-      // Workflow progression
       setTimeout(() => setSubmissionStatus('FETCH_SCHEDULED'), 1000);
       setTimeout(() => setSubmissionStatus('REQUIREMENTS_VERIFIED'), 2000);
       setTimeout(() => setSubmissionStatus('AI_EVALUATING'), 3000);
       setTimeout(() => {
         setSubmissionStatus('SCORED');
         const newSubId = Date.now();
+        const submitterAddr = account ? `${account.substring(0, 6)}...${account.substring(38)}` : "0xUSER...42A1";
 
         const newSubmission: SubmissionData = {
           id: newSubId,
-          contestId: selectedContest.id,
-          submitter: account ? `${account.substring(0, 6)}...${account.substring(38)}` : "0xUSER...42A1",
+          contestId: selectedProject.id,
+          projectId: selectedProject.id,
+          submitter: submitterAddr,
           submissionBlock: blockHeight + 2,
           contentUrl: submissionUrl,
           contentText: submissionText,
@@ -165,6 +174,7 @@ export default function DashboardApp() {
           objectiveScore: evalResult.objectiveScore,
           aiScore: evalResult.aiScore,
           finalScore: evalResult.finalScore,
+          isOgWinner: false,
           failureReason: evalResult.reason,
           aiBreakdown: {
             relevance: evalResult.aiScore,
@@ -182,6 +192,20 @@ export default function DashboardApp() {
 
         setSubmissions(prev => [newSubmission, ...prev]);
 
+        // Dynamically recalculate leaderboard and top OG winners for this month!
+        setLeaderboard(prev => {
+          const updated = [
+            { submissionId: newSubId, submitter: submitterAddr, finalScore: evalResult.finalScore, objectiveScore: evalResult.objectiveScore, submissionBlock: blockHeight },
+            ...prev
+          ].sort((a, b) => b.finalScore - a.finalScore);
+
+          // Mark Top N as OG Winners based on Project's topOgLimit setting
+          return updated.map((item, index) => ({
+            ...item,
+            isOgWinner: index < selectedProject.topOgLimit && item.finalScore >= 80
+          }));
+        });
+
         if (evalResult.hasPassedHardReqs) {
           setUserReputation(prev => prev + 25);
         }
@@ -190,68 +214,44 @@ export default function DashboardApp() {
       }, 4000);
     } catch (err: any) {
       console.error(err);
-      alert(err.message || "Transaction failed or was rejected by user.");
+      alert(err.message || "Transaction failed.");
       setIsSubmitting(false);
       setSubmissionStatus(null);
     }
   }
 
-  // Handle Live On-Chain Contest Creation
-  async function handleCreateContest(e: React.FormEvent) {
+  // Handle Project Owner Settings Creation
+  async function handleCreateProject(e: React.FormEvent) {
     e.preventDefault();
-    if (!newTitle) return;
+    if (!newProjName) return;
 
-    setIsCreatingContest(true);
-    try {
-      if (account) {
-        const hash = await createContestOnChain(
-          newTitle,
-          newDesc || "Community contest",
-          newPrize,
-          Number(newWinners),
-          Number(newMinWords),
-          newMentions,
-          newHashtags,
-          account
-        );
-        setTxHash(hash);
-        alert(`Contest transaction broadcasted on Ritual Testnet! TxHash: ${hash}`);
-      }
-
-      const created: ContestData = {
-        id: contests.length + 1,
-        title: newTitle,
-        description: newDesc || "Community contribution program evaluated by Ritual AI.",
-        startBlock: blockHeight,
-        endBlock: blockHeight + 40000,
-        prizeToken: "0xMERIT",
-        totalPrize: newPrize,
-        winnerCount: Number(newWinners),
-        payoutBps: [5000, 3000, 2000],
-        submissionCount: 0,
-        status: "ACTIVE",
-        objectiveWeight: 40,
-        aiWeight: 60,
+    setIsCreatingProject(true);
+    setTimeout(() => {
+      const createdProj: ProjectData = {
+        id: projects.length + 1,
+        name: newProjName,
+        category: newProjCategory,
+        description: newProjDesc || "Project contribution program with automated AI evaluation and monthly OG role assignment.",
+        totalEscrow: newProjEscrow,
+        topOgLimit: Number(newProjOgLimit),
+        participantCount: 0,
         requirements: {
-          minWords: Number(newMinWords),
-          requiredMentions: [newMentions],
-          requiredHashtags: [newHashtags],
-          requiredKeywords: ["Precompile"],
-          requiresMedia: false,
+          minWords: Number(newProjMinWords),
+          requiredMentions: [newProjMention],
+          requiredHashtags: [newProjHashtag],
+          requiredKeywords: [newProjKeyword],
         }
       };
 
-      setContests(prev => [created, ...prev]);
-      setIsCreatingContest(false);
-      setActiveTab('contests');
-    } catch (err: any) {
-      console.error(err);
-      alert(err.message || "Transaction rejected or failed.");
-      setIsCreatingContest(false);
-    }
+      setProjects(prev => [...prev, createdProj]);
+      setSelectedProject(createdProj);
+      setIsCreatingProject(false);
+      setActiveTab('projects');
+      alert(`Project "${newProjName}" activated with ${newProjEscrow} MERIT Escrow & Top ${newProjOgLimit} OG Role limit!`);
+    }, 1200);
   }
 
-  // Fill Presets
+  // Preset Fills
   const fillValidPost = () => {
     setSubmissionUrl("https://x.com/crypto_builder/status/1982001");
     setSubmissionText("Exploring @Ritual AI precompiles on #RitualTestnet! Precompile 0x0801 handles HTTP data fetching while 0x0802 executes GLM-4.7-FP8 LLM inference inside TEE enclaves. This allows smart contracts to evaluate creator contributions autonomously without human bias.");
@@ -323,15 +323,15 @@ export default function DashboardApp() {
         <aside className="lg:col-span-3 space-y-6">
           <div className="glass-card-sharp p-3 space-y-1">
             <button
-              onClick={() => setActiveTab('contests')}
+              onClick={() => setActiveTab('projects')}
               className={`w-full flex items-center gap-3 px-4 py-3.5 text-xs font-mono uppercase tracking-wider transition-all ${
-                activeTab === 'contests' 
+                activeTab === 'projects' 
                   ? 'bg-[#00E575] text-[#040705] font-black border border-[#00E575]' 
                   : 'text-slate-400 hover:text-slate-200 hover:bg-[#07110c]'
               }`}
             >
-              <Trophy className="w-4 h-4" />
-              <span>01//Submit & Contest</span>
+              <FolderPlus className="w-4 h-4" />
+              <span>01//Projects Hub</span>
             </button>
 
             <button
@@ -342,20 +342,20 @@ export default function DashboardApp() {
                   : 'text-slate-400 hover:text-slate-200 hover:bg-[#07110c]'
               }`}
             >
-              <PlusCircle className="w-4 h-4" />
-              <span>02//Create Contest</span>
+              <Settings className="w-4 h-4" />
+              <span>02//Project Settings</span>
             </button>
 
             <button
-              onClick={() => setActiveTab('overview')}
+              onClick={() => setActiveTab('leaderboard')}
               className={`w-full flex items-center gap-3 px-4 py-3.5 text-xs font-mono uppercase tracking-wider transition-all ${
-                activeTab === 'overview' 
+                activeTab === 'leaderboard' 
                   ? 'bg-[#00E575] text-[#040705] font-black border border-[#00E575]' 
                   : 'text-slate-400 hover:text-slate-200 hover:bg-[#07110c]'
               }`}
             >
-              <BarChart3 className="w-4 h-4" />
-              <span>03//Overview</span>
+              <UserCheck className="w-4 h-4" />
+              <span>03//OG Leaderboard</span>
             </button>
 
             <button
@@ -368,18 +368,6 @@ export default function DashboardApp() {
             >
               <Award className="w-4 h-4" />
               <span>04//Reputation</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('leaderboard')}
-              className={`w-full flex items-center gap-3 px-4 py-3.5 text-xs font-mono uppercase tracking-wider transition-all ${
-                activeTab === 'leaderboard' 
-                  ? 'bg-[#00E575] text-[#040705] font-black border border-[#00E575]' 
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-[#07110c]'
-              }`}
-            >
-              <UserCheck className="w-4 h-4" />
-              <span>05//Leaderboard</span>
             </button>
           </div>
 
@@ -401,9 +389,6 @@ export default function DashboardApp() {
                   style={{ width: `${(userReputation / 500) * 100}%` }}
                 />
               </div>
-              <p className="text-[11px] text-slate-400 mt-2 font-mono">
-                {500 - userReputation} PTS to reach <strong className="text-slate-200 uppercase">Core Contributor</strong>.
-              </p>
             </div>
           </div>
 
@@ -435,80 +420,102 @@ export default function DashboardApp() {
         {/* Content Area */}
         <main className="lg:col-span-9 space-y-6">
 
-          {/* TAB 1: CONTESTS & SUBMIT */}
-          {activeTab === 'contests' && (
+          {/* TAB 1: PROJECTS HUB (CONTRIBUTE TO 3 FEATURED PROJECTS) */}
+          {activeTab === 'projects' && (
             <div className="space-y-6">
-              {/* Contest Selection Bar */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {contests.map((c) => (
+              <div>
+                <h2 className="text-2xl font-black text-white font-sans uppercase tracking-tight mb-1">
+                  01 // Select Project & Submit Contribution
+                </h2>
+                <p className="text-xs font-mono text-slate-400">
+                  Select a featured project, submit your post, and compete on the monthly quality score leaderboard to earn the OG Role.
+                </p>
+              </div>
+
+              {/* 3 Featured Projects Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {projects.map((p) => (
                   <button
-                    key={c.id}
-                    onClick={() => setSelectedContest(c)}
-                    className={`p-5 text-left border transition-all ${
-                      selectedContest?.id === c.id 
-                        ? 'bg-[#08150e] border-2 border-[#00E575] shadow-[0_0_20px_rgba(0,229,117,0.2)]' 
+                    key={p.id}
+                    onClick={() => setSelectedProject(p)}
+                    className={`p-6 text-left border transition-all flex flex-col justify-between h-[240px] ${
+                      selectedProject?.id === p.id 
+                        ? 'bg-[#08150e] border-2 border-[#00E575] shadow-[0_0_25px_rgba(0,229,117,0.3)]' 
                         : 'bg-[#040705] border-[#00E575]/30 hover:border-[#00E575]/60'
                     }`}
                   >
-                    <div className="flex justify-between items-start mb-2 font-mono">
-                      <span className="text-xs text-[#00E575] font-bold">CONTEST #{c.id}</span>
-                      <span className="px-2 py-0.5 bg-[#00E575]/20 text-[#00E575] text-xs font-bold border border-[#00E575]/40">
-                        {c.totalPrize} MERIT
-                      </span>
+                    <div>
+                      <div className="flex items-center justify-between mb-3 font-mono">
+                        <span className="text-[10px] text-[#00E575] font-bold uppercase px-2 py-0.5 bg-[#00E575]/10 border border-[#00E575]/30">
+                          {p.category}
+                        </span>
+                        <span className="text-xs text-white font-bold font-mono">
+                          {p.totalEscrow} MERIT
+                        </span>
+                      </div>
+                      <h3 className="font-extrabold text-white text-lg mb-2">{p.name}</h3>
+                      <p className="text-xs text-slate-400 line-clamp-3 leading-relaxed">{p.description}</p>
                     </div>
-                    <h3 className="font-bold text-white text-base mb-1">{c.title}</h3>
-                    <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">{c.description}</p>
+
+                    <div className="pt-4 border-t border-[#00E575]/20 flex items-center justify-between text-xs font-mono text-slate-300">
+                      <span className="flex items-center gap-1 text-[#00E575] font-bold">
+                        <Crown className="w-3.5 h-3.5" /> Top {p.topOgLimit} Get OG
+                      </span>
+                      <span className="text-slate-400">{p.participantCount} Entries</span>
+                    </div>
                   </button>
                 ))}
               </div>
 
-              {/* Main Selected Contest Workspace */}
-              {selectedContest && (
-                <div className="glass-card-sharp p-6 space-y-6">
+              {/* Selected Project Submission & Evaluation Workspace */}
+              {selectedProject && (
+                <div className="glass-card-sharp p-6 space-y-6 border-2 border-[#00E575]">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#00E575]/20 pb-6">
                     <div>
-                      <span className="text-xs font-mono text-[#00E575] font-bold block mb-1">CONTEST #{selectedContest.id} ACTIVE</span>
-                      <h2 className="text-2xl font-black text-white uppercase">{selectedContest.title}</h2>
-                      <p className="text-xs text-slate-400 mt-1">{selectedContest.description}</p>
+                      <span className="text-xs font-mono text-[#00E575] font-bold block mb-1">
+                        ACTIVE PROJECT #0{selectedProject.id} :: {selectedProject.category}
+                      </span>
+                      <h2 className="text-2xl font-black text-white uppercase">{selectedProject.name}</h2>
+                      <p className="text-xs text-slate-400 mt-1">{selectedProject.description}</p>
                     </div>
-                    <div className="text-right shrink-0">
-                      <span className="text-2xl font-black text-[#00E575] block font-mono">{selectedContest.totalPrize} MERIT</span>
-                      <span className="text-xs font-mono text-slate-400">LOCKED ESCROW POOL</span>
+                    <div className="text-right shrink-0 font-mono">
+                      <span className="text-2xl font-black text-[#00E575] block">{selectedProject.totalEscrow} MERIT</span>
+                      <span className="text-xs text-slate-400">ESCROW POOL • TOP {selectedProject.topOgLimit} GET OG ROLE</span>
                     </div>
                   </div>
 
-                  {/* Mandatory Hard Requirements Box */}
+                  {/* Project Custom Settings & Requirements */}
                   <div className="bg-[#07110c] border border-[#00E575]/40 p-4 space-y-3 font-mono text-xs">
                     <div className="flex items-center justify-between text-[#00E575] font-bold">
-                      <span>MANDATORY HARD REQUIREMENTS FOR THIS CONTEST</span>
-                      <span>AI RUBRIC ENFORCED</span>
+                      <span>PROJECT EVALUATION RUBRIC & SETTINGS</span>
+                      <span>MONTHLY OG RANKING: TOP {selectedProject.topOgLimit}</span>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-3 pt-1">
                       <div className="bg-[#040705] p-3 border border-[#00E575]/30">
                         <span className="text-slate-400 block text-[10px] mb-1">MIN WORD COUNT</span>
-                        <span className="text-white font-bold text-sm">{selectedContest.requirements.minWords} Words</span>
+                        <span className="text-white font-bold text-sm">{selectedProject.requirements.minWords} Words</span>
                       </div>
 
                       <div className="bg-[#040705] p-3 border border-[#00E575]/30">
                         <span className="text-slate-400 block text-[10px] mb-1">REQUIRED MENTION</span>
-                        <span className="text-[#00E575] font-bold text-sm">{selectedContest.requirements.requiredMentions.join(', ')}</span>
+                        <span className="text-[#00E575] font-bold text-sm">{selectedProject.requirements.requiredMentions.join(', ')}</span>
                       </div>
 
                       <div className="bg-[#040705] p-3 border border-[#00E575]/30">
                         <span className="text-slate-400 block text-[10px] mb-1">REQUIRED HASHTAG</span>
-                        <span className="text-[#00E575] font-bold text-sm">{selectedContest.requirements.requiredHashtags.join(', ')}</span>
+                        <span className="text-[#00E575] font-bold text-sm">{selectedProject.requirements.requiredHashtags.join(', ')}</span>
                       </div>
 
                       <div className="bg-[#040705] p-3 border border-[#00E575]/30">
                         <span className="text-slate-400 block text-[10px] mb-1">REQUIRED KEYWORD</span>
-                        <span className="text-emerald-400 font-bold text-sm">{selectedContest.requirements.requiredKeywords.join(', ')}</span>
+                        <span className="text-emerald-400 font-bold text-sm">{selectedProject.requirements.requiredKeywords.join(', ')}</span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Submission Form (URL + Text Content + Sign Wallet) */}
-                  <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+                  {/* Submission Form */}
+                  <form onSubmit={handleProjectSubmit} className="space-y-4 pt-2">
                     <div>
                       <label className="block text-xs font-mono uppercase text-slate-300 mb-2">
                         1. Contribution X/Twitter Post URL
@@ -526,7 +533,7 @@ export default function DashboardApp() {
                     <div>
                       <div className="flex justify-between items-center mb-2 font-mono text-xs">
                         <label className="uppercase text-slate-300">
-                          2. Post Text Content (For Real-Time AI Tag & Requirement Evaluation)
+                          2. Post Text Content (For Real-Time AI Tag & Quality Evaluation)
                         </label>
                         <span className="text-slate-400">
                           Word Count: <strong className="text-white">{submissionText.trim().split(/\s+/).filter(Boolean).length}</strong>
@@ -536,24 +543,22 @@ export default function DashboardApp() {
                         rows={4}
                         value={submissionText}
                         onChange={(e) => setSubmissionText(e.target.value)}
-                        placeholder="Paste your tweet or article text here to evaluate @mentions, #hashtags, and word count..."
+                        placeholder="Paste your post text here to evaluate mentions, hashtags, keywords, and quality score..."
                         className="w-full bg-[#07110c] border border-[#00E575]/30 p-4 text-xs font-mono text-white placeholder-slate-600 focus:outline-none focus:border-[#00E575] leading-relaxed"
                       />
                     </div>
 
-                    <div className="flex flex-col sm:flex-row items-center gap-4 pt-2">
-                      <button
-                        type="submit"
-                        disabled={isSubmitting}
-                        className="btn-ritual-sharp h-14 px-8 text-xs font-mono uppercase tracking-wider flex items-center gap-3 w-full justify-center"
-                      >
-                        <Send className="w-4 h-4" />
-                        <span>{isSubmitting ? "Signing & Processing..." : "Sign & Submit Entry to Ritual Testnet"}</span>
-                      </button>
-                    </div>
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="btn-ritual-sharp h-14 px-8 text-xs font-mono uppercase tracking-wider flex items-center gap-3 w-full justify-center"
+                    >
+                      <Send className="w-4 h-4" />
+                      <span>{isSubmitting ? "Signing & Processing..." : `Sign & Submit Entry to ${selectedProject.name}`}</span>
+                    </button>
                   </form>
 
-                  {/* Prominent Instant Transaction Hash Box */}
+                  {/* Instant TxHash Display */}
                   {txHash && (
                     <div className="p-5 bg-[#08150e] border-2 border-[#00E575] font-mono text-xs space-y-3 shadow-[0_0_25px_rgba(0,229,117,0.3)]">
                       <div className="flex items-center justify-between text-[#00E575] font-black uppercase text-sm">
@@ -595,12 +600,12 @@ export default function DashboardApp() {
                           {latestEvaluationResult.hasPassedHardReqs ? (
                             <>
                               <CheckCircle2 className="w-5 h-5 text-[#00E575]" />
-                              <span className="text-[#00E575]">EVALUATION PASSED — HIGH SCORE</span>
+                              <span className="text-[#00E575]">QUALITY EVALUATION PASSED — HIGH SCORE</span>
                             </>
                           ) : (
                             <>
                               <XCircle className="w-5 h-5 text-red-500" />
-                              <span className="text-red-400">EVALUATION FAILED — LOW SCORE PENALTY</span>
+                              <span className="text-red-400">QUALITY EVALUATION FAILED — LOW SCORE PENALTY</span>
                             </>
                           )}
                         </div>
@@ -613,7 +618,6 @@ export default function DashboardApp() {
                         </span>
                       </div>
 
-                      {/* Detailed Reason Explanation */}
                       <div className="bg-[#040705] p-4 border border-[#00E575]/30 space-y-2">
                         <span className="text-[10px] text-slate-400 block uppercase">RITUAL AI JUDGE FEEDBACK & REASON</span>
                         <pre className="text-xs text-slate-200 whitespace-pre-wrap leading-relaxed">
@@ -627,78 +631,113 @@ export default function DashboardApp() {
             </div>
           )}
 
-          {/* TAB 2: CREATE CONTEST */}
+          {/* TAB 2: PROJECT OWNER SETTINGS */}
           {activeTab === 'console' && (
             <div className="glass-card-sharp p-6 space-y-6">
               <div>
-                <h2 className="text-xl font-black text-white font-sans uppercase tracking-tight mb-1">Create Autonomous Contest</h2>
-                <p className="text-xs font-mono text-slate-400">Lock prize tokens and set immutable rules. Ritual AI executes judging automatically.</p>
+                <h2 className="text-xl font-black text-white font-sans uppercase tracking-tight mb-1">
+                  02 // Project Owner Settings & Creation
+                </h2>
+                <p className="text-xs font-mono text-slate-400">
+                  Create a new project or configure rules, mandatory tags, escrow prize, and monthly OG winner limits.
+                </p>
               </div>
 
-              <form onSubmit={handleCreateContest} className="space-y-6 font-mono">
+              <form onSubmit={handleCreateProject} className="space-y-6 font-mono text-xs">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-xs text-slate-300 mb-2 uppercase">CONTEST TITLE</label>
+                    <label className="block text-slate-300 mb-2 uppercase">PROJECT NAME</label>
                     <input
                       type="text"
                       required
-                      value={newTitle}
-                      onChange={(e) => setNewTitle(e.target.value)}
-                      placeholder="e.g. Explain Ritual AI Precompiles"
+                      value={newProjName}
+                      onChange={(e) => setNewProjName(e.target.value)}
+                      placeholder="e.g. Ritual AI Hackathon Hub"
                       className="w-full bg-[#040705] border border-[#00E575]/30 px-4 py-3 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-[#00E575]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs text-slate-300 mb-2 uppercase">PRIZE ESCROW POOL (MERIT TOKENS)</label>
+                    <label className="block text-slate-300 mb-2 uppercase">CATEGORY</label>
                     <input
-                      type="number"
-                      required
-                      value={newPrize}
-                      onChange={(e) => setNewPrize(e.target.value)}
+                      type="text"
+                      value={newProjCategory}
+                      onChange={(e) => setNewProjCategory(e.target.value)}
                       className="w-full bg-[#040705] border border-[#00E575]/30 px-4 py-3 text-xs text-white focus:outline-none focus:border-[#00E575]"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs text-slate-300 mb-2 uppercase">CONTEST DESCRIPTION & RUBRIC</label>
+                  <label className="block text-slate-300 mb-2 uppercase">PROJECT DESCRIPTION & RUBRIC</label>
                   <textarea
                     rows={3}
-                    value={newDesc}
-                    onChange={(e) => setNewDesc(e.target.value)}
-                    placeholder="Describe contest requirements and evaluation criteria..."
+                    value={newProjDesc}
+                    onChange={(e) => setNewProjDesc(e.target.value)}
+                    placeholder="Describe project contribution criteria..."
                     className="w-full bg-[#040705] border border-[#00E575]/30 px-4 py-3 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-[#00E575]"
                   />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
-                    <label className="block text-xs text-slate-300 mb-2 uppercase">MINIMUM WORDS</label>
+                    <label className="block text-slate-300 mb-2 uppercase">ESCROW PRIZE POOL (MERIT)</label>
                     <input
                       type="number"
-                      value={newMinWords}
-                      onChange={(e) => setNewMinWords(e.target.value)}
+                      value={newProjEscrow}
+                      onChange={(e) => setNewProjEscrow(e.target.value)}
                       className="w-full bg-[#040705] border border-[#00E575]/30 px-4 py-3 text-xs text-white"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs text-slate-300 mb-2 uppercase">REQUIRED MENTION</label>
+                    <label className="block text-slate-300 mb-2 uppercase">MONTHLY OG WINNER LIMIT</label>
                     <input
-                      type="text"
-                      value={newMentions}
-                      onChange={(e) => setNewMentions(e.target.value)}
+                      type="number"
+                      value={newProjOgLimit}
+                      onChange={(e) => setNewProjOgLimit(e.target.value)}
                       className="w-full bg-[#040705] border border-[#00E575]/30 px-4 py-3 text-xs text-white"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs text-slate-300 mb-2 uppercase">REQUIRED HASHTAG</label>
+                    <label className="block text-slate-300 mb-2 uppercase">MINIMUM WORD COUNT</label>
+                    <input
+                      type="number"
+                      value={newProjMinWords}
+                      onChange={(e) => setNewProjMinWords(e.target.value)}
+                      className="w-full bg-[#040705] border border-[#00E575]/30 px-4 py-3 text-xs text-white"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div>
+                    <label className="block text-slate-300 mb-2 uppercase">REQUIRED @MENTION</label>
                     <input
                       type="text"
-                      value={newHashtags}
-                      onChange={(e) => setNewHashtags(e.target.value)}
+                      value={newProjMention}
+                      onChange={(e) => setNewProjMention(e.target.value)}
+                      className="w-full bg-[#040705] border border-[#00E575]/30 px-4 py-3 text-xs text-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-300 mb-2 uppercase">REQUIRED #HASHTAG</label>
+                    <input
+                      type="text"
+                      value={newProjHashtag}
+                      onChange={(e) => setNewProjHashtag(e.target.value)}
+                      className="w-full bg-[#040705] border border-[#00E575]/30 px-4 py-3 text-xs text-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-300 mb-2 uppercase">REQUIRED KEYWORD</label>
+                    <input
+                      type="text"
+                      value={newProjKeyword}
+                      onChange={(e) => setNewProjKeyword(e.target.value)}
                       className="w-full bg-[#040705] border border-[#00E575]/30 px-4 py-3 text-xs text-white"
                     />
                   </div>
@@ -706,73 +745,63 @@ export default function DashboardApp() {
 
                 <button
                   type="submit"
-                  disabled={isCreatingContest}
+                  disabled={isCreatingProject}
                   className="btn-ritual-sharp w-full h-13 text-xs font-mono uppercase tracking-wider"
                 >
-                  {isCreatingContest ? "Locking Prize & Creating..." : "Lock Prize Pool & Activate Contest"}
+                  {isCreatingProject ? "Saving Project & Lock Prize..." : "Save Project Settings & Lock Escrow"}
                 </button>
               </form>
             </div>
           )}
 
-          {/* TAB 3: OVERVIEW */}
-          {activeTab === 'overview' && (
-            <div className="space-y-6">
-              {/* Stats Bar */}
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 font-mono">
-                <div className="glass-card-sharp p-5">
-                  <span className="text-xs text-slate-400 block mb-1 uppercase">ACTIVE CONTESTS</span>
-                  <span className="text-3xl font-black text-white">{contests.length}</span>
-                </div>
-                <div className="glass-card-sharp p-5">
-                  <span className="text-xs text-slate-400 block mb-1 uppercase">LOCKED ESCROW</span>
-                  <span className="text-3xl font-black text-[#00E575]">3,500 <span className="text-xs font-normal text-slate-400">MERIT</span></span>
-                </div>
-                <div className="glass-card-sharp p-5">
-                  <span className="text-xs text-slate-400 block mb-1 uppercase">EVALUATIONS</span>
-                  <span className="text-3xl font-black text-emerald-400">22</span>
-                </div>
-                <div className="glass-card-sharp p-5">
-                  <span className="text-xs text-slate-400 block mb-1 uppercase">CONTRIBUTORS</span>
-                  <span className="text-3xl font-black text-slate-200">18</span>
-                </div>
+          {/* TAB 3: MONTHLY OG LEADERBOARD */}
+          {activeTab === 'leaderboard' && (
+            <div className="glass-card-sharp p-6 space-y-6">
+              <div>
+                <h2 className="text-xl font-black text-white font-sans uppercase tracking-tight mb-1">
+                  03 // Monthly Quality Score & OG Role Leaderboard
+                </h2>
+                <p className="text-xs font-mono text-slate-400">
+                  Participants ranked by AI quality evaluation score. Top {selectedProject?.topOgLimit || 3} participants earn the OG Role Merit Badge automatically at the end of the month.
+                </p>
               </div>
 
-              {/* Showcase Contests Grid */}
-              <div className="glass-card-sharp p-6 space-y-6">
-                <div>
-                  <h2 className="text-xl font-black text-white font-sans uppercase tracking-tight mb-1">Featured Creator Contests</h2>
-                  <p className="text-xs text-slate-400 font-mono">Autonomous contests on Ritual Testnet with transparent rubrics and locked prize pools.</p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {contests.map(c => (
-                    <div key={c.id} className="bg-[#040705] border border-[#00E575]/30 p-6 space-y-4 hover:border-[#00E575] transition-all">
-                      <div className="flex items-start justify-between">
-                        <h3 className="font-bold text-base text-white">{c.title}</h3>
-                        <span className="px-2.5 py-1 bg-[#00E575]/15 text-[#00E575] border border-[#00E575]/40 text-xs font-mono font-bold">
-                          {c.totalPrize} MERIT
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">{c.description}</p>
-                      
-                      <div className="pt-4 border-t border-[#00E575]/20 flex items-center justify-between text-xs font-mono text-slate-400">
-                        <span>{c.submissionCount} Submissions</span>
-                        <button 
-                          onClick={() => { setSelectedContest(c); setActiveTab('contests'); }}
-                          className="text-[#00E575] font-bold hover:underline flex items-center gap-1 uppercase"
-                        >
-                          Submit Entry <ChevronRight className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse font-mono text-xs">
+                  <thead>
+                    <tr className="border-b border-[#00E575]/30 text-slate-400 bg-[#07110c]">
+                      <th className="py-3.5 px-4 uppercase">RANK</th>
+                      <th className="py-3.5 px-4 uppercase">CONTRIBUTOR</th>
+                      <th className="py-3.5 px-4 uppercase">QUALITY SCORE</th>
+                      <th className="py-3.5 px-4 uppercase">OG ROLE STATUS</th>
+                      <th className="py-3.5 px-4 uppercase">BLOCK</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#00E575]/15 text-xs">
+                    {leaderboard.map((item, idx) => (
+                      <tr key={idx} className={`hover:bg-[#00E575]/10 transition-colors ${item.isOgWinner ? 'bg-[#00E575]/5' : ''}`}>
+                        <td className="py-4 px-4 font-bold text-[#00E575]">#{idx + 1}</td>
+                        <td className="py-4 px-4 font-medium text-slate-200">{item.submitter}</td>
+                        <td className="py-4 px-4 font-bold text-white">{item.finalScore} / 100</td>
+                        <td className="py-4 px-4">
+                          {item.isOgWinner ? (
+                            <span className="px-2.5 py-1 bg-[#00E575] text-[#040705] font-black text-[10px] uppercase flex items-center gap-1 w-max border border-[#00E575]">
+                              <Crown className="w-3 h-3" /> OG ROLE QUALIFIED
+                            </span>
+                          ) : (
+                            <span className="text-slate-500 text-[11px]">CONTRIBUTOR</span>
+                          )}
+                        </td>
+                        <td className="py-4 px-4 text-slate-500">#{item.submissionBlock}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
 
-          {/* TAB 4: REPUTATION & BADGES */}
+          {/* TAB 4: REPUTATION */}
           {activeTab === 'reputation' && (
             <div className="space-y-6">
               <div className="glass-card-sharp p-6 space-y-6">
@@ -842,41 +871,6 @@ export default function DashboardApp() {
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 5: LEADERBOARD */}
-          {activeTab === 'leaderboard' && (
-            <div className="glass-card-sharp p-6 space-y-6">
-              <div>
-                <h2 className="text-xl font-black text-white font-sans uppercase tracking-tight mb-1">Contest Leaderboard</h2>
-                <p className="text-xs font-mono text-slate-400">Top ranked entries updated upon Ritual AI scoring with deterministic tie-breaking.</p>
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse font-mono text-xs">
-                  <thead>
-                    <tr className="border-b border-[#00E575]/30 text-slate-400 bg-[#07110c]">
-                      <th className="py-3.5 px-4 uppercase">RANK</th>
-                      <th className="py-3.5 px-4 uppercase">CREATOR</th>
-                      <th className="py-3.5 px-4 uppercase">FINAL SCORE</th>
-                      <th className="py-3.5 px-4 uppercase">OBJECTIVE</th>
-                      <th className="py-3.5 px-4 uppercase">SUBMISSION BLOCK</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#00E575]/15 text-xs">
-                    {leaderboard.map((item, idx) => (
-                      <tr key={idx} className="hover:bg-[#00E575]/10 transition-colors">
-                        <td className="py-4 px-4 font-bold text-[#00E575]">#{idx + 1}</td>
-                        <td className="py-4 px-4 font-medium text-slate-200">{item.submitter}</td>
-                        <td className="py-4 px-4 font-bold text-white">{item.finalScore} / 100</td>
-                        <td className="py-4 px-4 text-slate-400">{item.objectiveScore}</td>
-                        <td className="py-4 px-4 text-slate-500">#{item.submissionBlock}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
               </div>
             </div>
           )}

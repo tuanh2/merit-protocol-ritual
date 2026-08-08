@@ -105,6 +105,22 @@ export const ERC20_ABI = [
   }
 ] as const;
 
+export interface ProjectData {
+  id: number;
+  name: string;
+  category: string;
+  description: string;
+  totalEscrow: string;
+  topOgLimit: number;
+  participantCount: number;
+  requirements: {
+    minWords: number;
+    requiredMentions: string[];
+    requiredHashtags: string[];
+    requiredKeywords: string[];
+  };
+}
+
 export interface ContestData {
   id: number;
   title: string;
@@ -131,6 +147,7 @@ export interface ContestData {
 export interface SubmissionData {
   id: number;
   contestId: number;
+  projectId?: number;
   submitter: string;
   submissionBlock: number;
   contentUrl: string;
@@ -139,6 +156,7 @@ export interface SubmissionData {
   objectiveScore: number;
   aiScore: number;
   finalScore: number;
+  isOgWinner?: boolean;
   failureReason?: string;
   aiBreakdown?: {
     relevance: number;
@@ -160,13 +178,62 @@ export interface LeaderboardItem {
   finalScore: number;
   objectiveScore: number;
   submissionBlock: number;
+  isOgWinner?: boolean;
 }
 
-// Detailed Sample Contests (Project Post Writing Contests)
+// 3 Default Featured Projects
+export const SHOWCASE_PROJECTS: ProjectData[] = [
+  {
+    id: 1,
+    name: "Ritual Network Ecosystem",
+    category: "AI Infrastructure",
+    description: "Official Ritual Foundation community content program. Submit threads & guides explaining Ritual AI Precompiles.",
+    totalEscrow: "5000",
+    topOgLimit: 3,
+    participantCount: 28,
+    requirements: {
+      minWords: 50,
+      requiredMentions: ["@Ritual"],
+      requiredHashtags: ["#RitualTestnet"],
+      requiredKeywords: ["Precompile"],
+    }
+  },
+  {
+    id: 2,
+    name: "Merit Protocol Engine",
+    category: "Web3 Creator Economy",
+    description: "Autonomous creator reward protocol. Submit articles analyzing transparent on-chain AI rubrics and soulbound reputation.",
+    totalEscrow: "3500",
+    topOgLimit: 3,
+    participantCount: 19,
+    requirements: {
+      minWords: 60,
+      requiredMentions: ["@Ritual"],
+      requiredHashtags: ["#MeritProtocol"],
+      requiredKeywords: ["Reputation"],
+    }
+  },
+  {
+    id: 3,
+    name: "Agentic AI Hub",
+    category: "Autonomous AI Agents",
+    description: "Community hub for autonomous AI agents executing on-chain state machine evaluations via Ritual TEE enclaves.",
+    totalEscrow: "2000",
+    topOgLimit: 2,
+    participantCount: 14,
+    requirements: {
+      minWords: 40,
+      requiredMentions: ["@Ritual"],
+      requiredHashtags: ["#AgenticAI"],
+      requiredKeywords: ["Agent"],
+    }
+  }
+];
+
 export const SHOWCASE_CONTESTS: ContestData[] = [
   {
     id: 1,
-    title: "Writing Contest #1: Ritual AI Precompile Technical Thread",
+    title: "Ritual AI Precompile Technical Thread",
     description: "Write an educational post or thread explaining how Ritual AI Precompiles (0x0801 HTTP & 0x0802 LLM) enable smart contracts to execute TEE-verified AI inference on Ritual Testnet.",
     startBlock: 104200,
     endBlock: 154200,
@@ -188,7 +255,7 @@ export const SHOWCASE_CONTESTS: ContestData[] = [
   },
   {
     id: 2,
-    title: "Writing Contest #2: Merit Protocol Creator Economy Article",
+    title: "Merit Protocol Creator Economy Article",
     description: "Write an in-depth article analyzing how Merit Protocol removes manual admin bias by using on-chain prize escrow and soulbound reputation badges for Web3 creators.",
     startBlock: 102000,
     endBlock: 162000,
@@ -201,7 +268,7 @@ export const SHOWCASE_CONTESTS: ContestData[] = [
     objectiveWeight: 30,
     aiWeight: 70,
     requirements: {
-      minWords: 80,
+      minWords: 60,
       requiredMentions: ["@Ritual"],
       requiredHashtags: ["#MeritProtocol"],
       requiredKeywords: ["Reputation"],
@@ -211,31 +278,34 @@ export const SHOWCASE_CONTESTS: ContestData[] = [
 ];
 
 export const SHOWCASE_LEADERBOARD: LeaderboardItem[] = [
-  { submissionId: 101, submitter: "0x71C...82A9", finalScore: 93, objectiveScore: 100, submissionBlock: 104320 },
-  { submissionId: 102, submitter: "0x3F9...41B2", finalScore: 89, objectiveScore: 100, submissionBlock: 104350 },
-  { submissionId: 103, submitter: "0x82D...19E4", finalScore: 86, objectiveScore: 100, submissionBlock: 104410 },
-  { submissionId: 104, submitter: "0x14E...99A1", finalScore: 81, objectiveScore: 80, submissionBlock: 104480 },
+  { submissionId: 101, submitter: "0x71C...82A9", finalScore: 96, objectiveScore: 100, submissionBlock: 104320, isOgWinner: true },
+  { submissionId: 102, submitter: "0x3F9...41B2", finalScore: 92, objectiveScore: 100, submissionBlock: 104350, isOgWinner: true },
+  { submissionId: 103, submitter: "0x82D...19E4", finalScore: 88, objectiveScore: 100, submissionBlock: 104410, isOgWinner: true },
+  { submissionId: 104, submitter: "0x14E...99A1", finalScore: 81, objectiveScore: 80, submissionBlock: 104480, isOgWinner: false },
+  { submissionId: 105, submitter: "0x98A...20B1", finalScore: 15, objectiveScore: 0, submissionBlock: 104500, isOgWinner: false },
 ];
 
 export const SHOWCASE_SUBMISSIONS: SubmissionData[] = [
   {
     id: 101,
     contestId: 1,
+    projectId: 1,
     submitter: "0x71C...82A9",
     submissionBlock: 104320,
     contentUrl: "https://x.com/web3builder/status/17894210",
     contentText: "Exploring @Ritual AI precompiles on #RitualTestnet! Precompile 0x0801 handles HTTP data fetching while 0x0802 runs GLM-4.7-FP8 LLM inference inside TEE enclaves. This allows smart contracts to evaluate creator contributions autonomously without human bias.",
     status: "SCORED",
     objectiveScore: 100,
-    aiScore: 88,
-    finalScore: 93,
+    aiScore: 96,
+    finalScore: 96,
+    isOgWinner: true,
     aiBreakdown: {
-      relevance: 95,
-      accuracy: 92,
-      originality: 88,
+      relevance: 96,
+      accuracy: 96,
+      originality: 96,
       clarity: 96,
-      usefulness: 90,
-      creativity: 85,
+      usefulness: 96,
+      creativity: 96,
       reason: "EXCELLENT EVALUATION: All hard requirements verified (@Ritual mention, #RitualTestnet hashtag, Precompile keyword). High technical accuracy.",
       usedMock: true,
       hasPassedHardReqs: true,
@@ -244,32 +314,27 @@ export const SHOWCASE_SUBMISSIONS: SubmissionData[] = [
   },
 ];
 
-// Evaluate Submission Content against Contest Requirements
-export function evaluateSubmissionContent(text: string, contest: ContestData) {
-  const reqs = contest.requirements;
+// Evaluate Submission Content against Requirements
+export function evaluateSubmissionContent(text: string, reqs: { minWords: number; requiredMentions: string[]; requiredHashtags: string[]; requiredKeywords: string[]; }) {
   const failed: string[] = [];
 
-  // 1. Check Mentions
   for (const m of reqs.requiredMentions) {
     if (!text.toLowerCase().includes(m.toLowerCase())) {
       failed.push(`Missing mandatory mention: ${m}`);
     }
   }
 
-  // 2. Check Hashtags
   for (const h of reqs.requiredHashtags) {
     if (!text.toLowerCase().includes(h.toLowerCase())) {
       failed.push(`Missing mandatory hashtag: ${h}`);
     }
   }
 
-  // 3. Check Word Count
   const words = text.trim().split(/\s+/).filter(Boolean);
   if (words.length < reqs.minWords) {
     failed.push(`Word count (${words.length} words) below minimum required (${reqs.minWords} words)`);
   }
 
-  // 4. Check Required Keywords
   for (const k of reqs.requiredKeywords) {
     if (!text.toLowerCase().includes(k.toLowerCase())) {
       failed.push(`Missing mandatory keyword: "${k}"`);
@@ -289,9 +354,8 @@ export function evaluateSubmissionContent(text: string, contest: ContestData) {
     };
   }
 
-  // High score if requirements passed
   const wordBonus = Math.min(words.length - reqs.minWords, 50);
-  const baseAi = 85 + Math.floor(Math.random() * 8);
+  const baseAi = 88 + Math.floor(Math.random() * 6);
   const finalAi = Math.min(baseAi + Math.floor(wordBonus / 10), 98);
 
   return {
@@ -304,7 +368,7 @@ export function evaluateSubmissionContent(text: string, contest: ContestData) {
   };
 }
 
-// Read Chain Status (Block Height & Online Status)
+// Read Chain Status
 export async function fetchChainStatus() {
   try {
     const blockNumber = await publicClient.getBlockNumber();
@@ -322,7 +386,7 @@ export async function fetchChainStatus() {
   }
 }
 
-// Switch/Add Ritual Testnet Automatically to User's MetaMask
+// Switch/Add Ritual Testnet
 export async function switchOrAddRitualChain() {
   const ethereum = (window as any).ethereum;
   if (!ethereum) throw new Error("MetaMask is not installed.");
@@ -355,7 +419,7 @@ export async function switchOrAddRitualChain() {
   }
 }
 
-// Live On-Chain Entry Submission via User's MetaMask
+// Submit Entry On-Chain
 export async function submitEntryOnChain(contestId: number, contentUrl: string, userAccount: string) {
   const ethereum = (window as any).ethereum;
   if (!ethereum) throw new Error("MetaMask is not installed.");
@@ -384,7 +448,7 @@ export async function submitEntryOnChain(contestId: number, contentUrl: string, 
   return hash;
 }
 
-// Live On-Chain Contest Creation via User's MetaMask
+// Create Contest On-Chain
 export async function createContestOnChain(
   title: string,
   description: string,
