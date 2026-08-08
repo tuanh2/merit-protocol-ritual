@@ -31,7 +31,8 @@ import {
   Crown,
   Link as LinkIcon,
   User,
-  MessageSquare
+  MessageSquare,
+  Calendar
 } from 'lucide-react';
 import { 
   fetchChainStatus, 
@@ -45,7 +46,7 @@ import {
   SHOWCASE_PROJECTS,
   SHOWCASE_LEADERBOARD, 
   SHOWCASE_SUBMISSIONS,
-  ProjectData,
+  ProjectCampaignData,
   SubmissionData,
   LeaderboardItem
 } from '../services/rpc';
@@ -54,22 +55,22 @@ export default function DashboardApp() {
   // Role Selection: 'owner' (Open Contest / Campaign) OR 'contributor' (Participant)
   const [userRoleMode, setUserRoleMode] = useState<'owner' | 'contributor' | null>(null);
 
-  const [activeTab, setActiveTab] = useState<'projects' | 'console' | 'leaderboard' | 'reputation'>('projects');
+  const [activeTab, setActiveTab] = useState<'contribute_hub' | 'open_campaign' | 'leaderboard' | 'reputation'>('contribute_hub');
   const [account, setAccount] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [blockHeight, setBlockHeight] = useState<number>(104520);
   const [isRpcOnline, setIsRpcOnline] = useState(true);
   const [isMockMode, setIsMockMode] = useState(true);
 
-  // Projects State
-  const [projects, setProjects] = useState<ProjectData[]>(SHOWCASE_PROJECTS);
-  const [selectedProject, setSelectedProject] = useState<ProjectData>(SHOWCASE_PROJECTS[0]);
+  // Projects & Campaigns State
+  const [projects, setProjects] = useState<ProjectCampaignData[]>(SHOWCASE_PROJECTS);
+  const [selectedProject, setSelectedProject] = useState<ProjectCampaignData>(SHOWCASE_PROJECTS[0]);
 
   // Submissions & Leaderboard State
   const [leaderboard, setLeaderboard] = useState<LeaderboardItem[]>(SHOWCASE_LEADERBOARD);
   const [submissions, setSubmissions] = useState<SubmissionData[]>(SHOWCASE_SUBMISSIONS);
 
-  // Submission Inputs (X URL + Discord Username)
+  // Submission Inputs (X Link + Discord Username)
   const [submissionUrl, setSubmissionUrl] = useState('https://x.com/crypto_builder/status/19824001');
   const [discordHandle, setDiscordHandle] = useState('builder#1234');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -77,21 +78,27 @@ export default function DashboardApp() {
   const [txHash, setTxHash] = useState<string | null>(null);
   const [latestEvaluationResult, setLatestEvaluationResult] = useState<any | null>(null);
 
-  // New Project Settings State
-  const [newProjName, setNewProjName] = useState('');
-  const [newProjCategory, setNewProjCategory] = useState('Web3 Infrastructure');
-  const [newProjDesc, setNewProjDesc] = useState('');
-  const [newProjEscrow, setNewProjEscrow] = useState('3000');
-  const [newProjOgLimit, setNewProjOgLimit] = useState('3');
-  const [newProjMinWords, setNewProjMinWords] = useState('50');
-  const [newProjMention, setNewProjMention] = useState('@Ritual');
-  const [newProjHashtag, setNewProjHashtag] = useState('#RitualTestnet');
-  const [newProjKeyword, setNewProjKeyword] = useState('Precompile');
-  const [isCreatingProject, setIsCreatingProject] = useState(false);
+  // New Project/Campaign Creation State (For Owner)
+  const [newCampaignName, setNewCampaignName] = useState('');
+  const [newCampaignType, setNewCampaignType] = useState<'CONTEST' | 'PROJECT_CAMPAIGN'>('PROJECT_CAMPAIGN');
+  const [newCampaignFreq, setNewCampaignFreq] = useState<'WEEKLY' | 'MONTHLY'>('MONTHLY');
+  const [newCampaignCategory, setNewCampaignCategory] = useState('AI Infrastructure');
+  const [newCampaignDesc, setNewCampaignDesc] = useState('');
+  const [newCampaignEscrow, setNewCampaignEscrow] = useState('3000');
+  const [newCampaignOgLimit, setNewCampaignOgLimit] = useState('3');
+  const [newCampaignMinWords, setNewCampaignMinWords] = useState('50');
+  const [newCampaignMention, setNewCampaignMention] = useState('@Ritual');
+  const [newCampaignHashtag, setNewCampaignHashtag] = useState('#RitualTestnet');
+  const [newCampaignKeyword, setNewCampaignKeyword] = useState('Precompile');
+  const [isCreatingCampaign, setIsCreatingCampaign] = useState(false);
 
   // User Profile Stats
   const [userReputation, setUserReputation] = useState(463);
   const userRole = 'Verified Contributor';
+
+  // Separate Projects into 2 Columns: Contests (1-off) vs Project Campaigns (Continuous)
+  const contestList = projects.filter(p => p.type === 'CONTEST');
+  const campaignList = projects.filter(p => p.type === 'PROJECT_CAMPAIGN');
 
   // Load RPC Chain Status
   useEffect(() => {
@@ -127,7 +134,7 @@ export default function DashboardApp() {
     }
   }
 
-  // Handle Project Submission (X URL + Discord Username)
+  // Handle Project/Campaign Submission (X Link + Discord Username)
   async function handleProjectSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!selectedProject || !submissionUrl || !discordHandle) {
@@ -197,7 +204,9 @@ export default function DashboardApp() {
 
         setSubmissions(prev => [newSubmission, ...prev]);
 
-        // Recalculate Project Leaderboard & OG Role assignment
+        // Update Project Trackers & Leaderboard
+        setProjects(prev => prev.map(p => p.id === selectedProject.id ? { ...p, totalSubmissionsTracked: p.totalSubmissionsTracked + 1 } : p));
+
         setLeaderboard(prev => {
           const updated = [
             { 
@@ -233,34 +242,36 @@ export default function DashboardApp() {
     }
   }
 
-  // Handle Project Owner Settings Creation
-  async function handleCreateProject(e: React.FormEvent) {
+  // Handle Project Owner Campaign Creation
+  async function handleCreateCampaign(e: React.FormEvent) {
     e.preventDefault();
-    if (!newProjName) return;
+    if (!newCampaignName) return;
 
-    setIsCreatingProject(true);
+    setIsCreatingCampaign(true);
     setTimeout(() => {
-      const createdProj: ProjectData = {
+      const createdItem: ProjectCampaignData = {
         id: projects.length + 1,
-        name: newProjName,
-        category: newProjCategory,
-        description: newProjDesc || "Project contribution program with automated AI evaluation and monthly OG role assignment.",
-        totalEscrow: newProjEscrow,
-        topOgLimit: Number(newProjOgLimit),
-        participantCount: 0,
+        name: newCampaignName,
+        type: newCampaignType,
+        frequency: newCampaignFreq,
+        category: newCampaignCategory,
+        description: newCampaignDesc || "Campaign space with AI evaluation and OG role distribution.",
+        totalEscrow: newCampaignEscrow,
+        topOgLimit: Number(newCampaignOgLimit),
+        totalSubmissionsTracked: 0,
         requirements: {
-          minWords: Number(newProjMinWords),
-          requiredMentions: [newProjMention],
-          requiredHashtags: [newProjHashtag],
-          requiredKeywords: [newProjKeyword],
+          minWords: Number(newCampaignMinWords),
+          requiredMentions: [newCampaignMention],
+          requiredHashtags: [newCampaignHashtag],
+          requiredKeywords: [newCampaignKeyword],
         }
       };
 
-      setProjects(prev => [...prev, createdProj]);
-      setSelectedProject(createdProj);
-      setIsCreatingProject(false);
-      setActiveTab('projects');
-      alert(`Project "${newProjName}" activated with ${newProjEscrow} MERIT Escrow & Top ${newProjOgLimit} OG Role limit!`);
+      setProjects(prev => [...prev, createdItem]);
+      setSelectedProject(createdItem);
+      setIsCreatingCampaign(false);
+      setActiveTab('contribute_hub');
+      alert(`Campaign "${newCampaignName}" (${newCampaignType}) activated! OG Roles: Top ${newCampaignOgLimit} (${newCampaignFreq}).`);
     }, 1200);
   }
 
@@ -291,13 +302,13 @@ export default function DashboardApp() {
                 Welcome to Merit Protocol
               </h2>
               <p className="text-xs text-slate-400 mt-2 leading-relaxed font-sans">
-                Select your role to access project campaign settings or contribute to active Web3 project contests.
+                Select your role to open new campaigns or contribute to active Web3 project contests.
               </p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
               <button
-                onClick={() => { setUserRoleMode('owner'); setActiveTab('console'); }}
+                onClick={() => { setUserRoleMode('owner'); setActiveTab('open_campaign'); }}
                 className="p-6 bg-[#07110c] hover:bg-[#00E575]/15 border-2 border-[#00E575]/40 hover:border-[#00E575] text-left transition-all group space-y-3"
               >
                 <div className="flex justify-between items-center text-[#00E575] font-bold text-xs">
@@ -305,15 +316,15 @@ export default function DashboardApp() {
                   <Settings className="w-4 h-4" />
                 </div>
                 <h3 className="font-extrabold text-white text-base group-hover:text-[#00E575] uppercase">
-                  Project Owner
+                  Open Contest / Project Campaign
                 </h3>
                 <p className="text-[11px] text-slate-400 leading-relaxed font-sans">
-                  Open contest & campaign. Lock escrow prizes & set rubric rules.
+                  Create contest or open project campaign. Set OG roles (3 or 4) & weekly/monthly cycle.
                 </p>
               </button>
 
               <button
-                onClick={() => { setUserRoleMode('contributor'); setActiveTab('projects'); }}
+                onClick={() => { setUserRoleMode('contributor'); setActiveTab('contribute_hub'); }}
                 className="p-6 bg-[#07110c] hover:bg-[#00E575]/15 border-2 border-[#00E575]/40 hover:border-[#00E575] text-left transition-all group space-y-3"
               >
                 <div className="flex justify-between items-center text-[#00E575] font-bold text-xs">
@@ -324,7 +335,7 @@ export default function DashboardApp() {
                   Contributor
                 </h3>
                 <p className="text-[11px] text-slate-400 leading-relaxed font-sans">
-                  Submit X post link + Discord username. Compete for OG role.
+                  Browse 2 horizontal columns (Contest vs Project Campaign). Submit X link + Discord username.
                 </p>
               </button>
             </div>
@@ -354,17 +365,15 @@ export default function DashboardApp() {
           </div>
 
           <div className="flex items-center gap-4 font-mono text-xs">
-            {/* Role Mode Switcher */}
             {userRoleMode && (
               <button
                 onClick={() => setUserRoleMode(userRoleMode === 'owner' ? 'contributor' : 'owner')}
                 className="bg-[#00E575]/15 border border-[#00E575]/40 text-[#00E575] px-3.5 py-2 font-bold uppercase hover:bg-[#00E575]/25 transition-colors"
               >
-                ROLE: {userRoleMode === 'owner' ? "PROJECT OWNER" : "CONTRIBUTOR"} ⚙️
+                MODE: {userRoleMode === 'owner' ? "PROJECT OWNER" : "CONTRIBUTOR"} ⚙️
               </button>
             )}
 
-            {/* Wallet Button */}
             {account ? (
               <div className="flex items-center gap-2 bg-[#07110c] border border-[#00E575]/40 px-4 py-2 text-[#00E575]">
                 <div className="w-2.5 h-2.5 bg-[#00E575]" />
@@ -391,22 +400,22 @@ export default function DashboardApp() {
         <aside className="lg:col-span-3 space-y-6">
           <div className="glass-card-sharp p-3 space-y-1">
             <button
-              onClick={() => setActiveTab('projects')}
+              onClick={() => setActiveTab('contribute_hub')}
               className={`w-full flex items-center gap-3 px-4 py-3.5 text-xs font-mono uppercase tracking-wider transition-all ${
-                activeTab === 'projects' 
+                activeTab === 'contribute_hub' 
                   ? 'bg-[#00E575] text-[#040705] font-black border border-[#00E575]' 
                   : 'text-slate-400 hover:text-slate-200 hover:bg-[#07110c]'
               }`}
             >
               <FolderPlus className="w-4 h-4" />
-              <span>01//Projects & Campaigns</span>
+              <span>01//Contribute Hub</span>
             </button>
 
             {userRoleMode === 'owner' && (
               <button
-                onClick={() => setActiveTab('console')}
+                onClick={() => setActiveTab('open_campaign')}
                 className={`w-full flex items-center gap-3 px-4 py-3.5 text-xs font-mono uppercase tracking-wider transition-all ${
-                  activeTab === 'console' 
+                  activeTab === 'open_campaign' 
                     ? 'bg-[#00E575] text-[#040705] font-black border border-[#00E575]' 
                     : 'text-slate-400 hover:text-slate-200 hover:bg-[#07110c]'
                 }`}
@@ -490,67 +499,143 @@ export default function DashboardApp() {
         {/* Content Area */}
         <main className="lg:col-span-9 space-y-6">
 
-          {/* TAB 1: PROJECTS & CAMPAIGNS HUB */}
-          {activeTab === 'projects' && (
-            <div className="space-y-6">
+          {/* TAB 1: CONTRIBUTE HUB (2 HORIZONTAL COLUMNS: CONTEST vs PROJECT CAMPAIGN) */}
+          {activeTab === 'contribute_hub' && (
+            <div className="space-y-8">
               <div>
                 <h2 className="text-2xl font-black text-white font-sans uppercase tracking-tight mb-1">
-                  01 // Active Projects & Contests
+                  01 // Contribute Hub (Horizontal Columns)
                 </h2>
                 <p className="text-xs font-mono text-slate-400">
-                  Select a project below to view requirements, submit your X post link + Discord username, or inspect participant rankings.
+                  Select a contest (1-off entry) or project campaign (continuous tracking for 50+ posts) to submit your X link & Discord handle.
                 </p>
               </div>
 
-              {/* 3 Featured Projects Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {projects.map((p) => (
-                  <button
-                    key={p.id}
-                    onClick={() => setSelectedProject(p)}
-                    className={`p-6 text-left border transition-all flex flex-col justify-between h-[240px] ${
-                      selectedProject?.id === p.id 
-                        ? 'bg-[#08150e] border-2 border-[#00E575] shadow-[0_0_25px_rgba(0,229,117,0.3)]' 
-                        : 'bg-[#040705] border-[#00E575]/30 hover:border-[#00E575]/60'
-                    }`}
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-3 font-mono">
-                        <span className="text-[10px] text-[#00E575] font-bold uppercase px-2 py-0.5 bg-[#00E575]/10 border border-[#00E575]/30">
-                          {p.category}
-                        </span>
-                        <span className="text-xs text-white font-bold font-mono">
-                          {p.totalEscrow} MERIT
-                        </span>
-                      </div>
-                      <h3 className="font-extrabold text-white text-lg mb-2">{p.name}</h3>
-                      <p className="text-xs text-slate-400 line-clamp-3 leading-relaxed">{p.description}</p>
+              {/* 2 HORIZONTAL COLUMNS SIDE-BY-SIDE */}
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                
+                {/* COLUMN 1: ONE-OFF CONTESTS */}
+                <div className="glass-card-sharp p-6 space-y-6 border-t-4 border-t-[#00E575]">
+                  <div className="flex items-center justify-between border-b border-[#00E575]/20 pb-4 font-mono">
+                    <div className="flex items-center gap-2">
+                      <Trophy className="w-5 h-5 text-[#00E575]" />
+                      <h3 className="font-extrabold text-white text-lg uppercase font-sans">One-Off Contests</h3>
                     </div>
+                    <span className="text-xs text-[#00E575] font-bold bg-[#00E575]/10 px-2.5 py-1 border border-[#00E575]/30">
+                      1 SUBMISSION PER ENTRY
+                    </span>
+                  </div>
 
-                    <div className="pt-4 border-t border-[#00E575]/20 flex items-center justify-between text-xs font-mono text-slate-300">
-                      <span className="flex items-center gap-1 text-[#00E575] font-bold">
-                        <Crown className="w-3.5 h-3.5" /> Top {p.topOgLimit} Get OG
-                      </span>
-                      <span className="text-slate-400">{p.participantCount} Participants</span>
+                  <div className="space-y-4">
+                    {contestList.map(c => (
+                      <div 
+                        key={c.id}
+                        className={`p-5 bg-[#040705] border transition-all space-y-4 ${
+                          selectedProject?.id === c.id 
+                            ? 'border-2 border-[#00E575] shadow-[0_0_20px_rgba(0,229,117,0.2)]' 
+                            : 'border-[#00E575]/30 hover:border-[#00E575]/60'
+                        }`}
+                      >
+                        <div className="flex justify-between items-start font-mono">
+                          <span className="text-xs text-[#00E575] font-bold">CONTEST #{c.id}</span>
+                          <span className="text-xs text-white font-bold font-mono px-2 py-0.5 bg-[#00E575]/15 border border-[#00E575]/40">
+                            {c.totalEscrow} MERIT
+                          </span>
+                        </div>
+                        <h4 className="font-black text-white text-base">{c.name}</h4>
+                        <p className="text-xs text-slate-400 leading-relaxed">{c.description}</p>
+                        
+                        <div className="flex gap-2 pt-2 border-t border-[#00E575]/20 font-mono text-xs">
+                          <button
+                            onClick={() => setSelectedProject(c)}
+                            className="btn-ritual-sharp flex-1 py-2 text-center font-bold uppercase"
+                          >
+                            Nộp Link X
+                          </button>
+                          <button
+                            onClick={() => { setSelectedProject(c); setActiveTab('leaderboard'); }}
+                            className="btn-ritual-outline-sharp px-4 py-2 uppercase font-bold"
+                          >
+                            Xem Leaderboard
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* COLUMN 2: CONTINUOUS PROJECT CAMPAIGNS (TRACK 50+ POSTS) */}
+                <div className="glass-card-sharp p-6 space-y-6 border-t-4 border-t-emerald-400">
+                  <div className="flex items-center justify-between border-b border-[#00E575]/20 pb-4 font-mono">
+                    <div className="flex items-center gap-2">
+                      <FolderPlus className="w-5 h-5 text-emerald-400" />
+                      <h3 className="font-extrabold text-white text-lg uppercase font-sans">Project Campaigns</h3>
                     </div>
-                  </button>
-                ))}
+                    <span className="text-xs text-emerald-400 font-bold bg-emerald-500/10 px-2.5 py-1 border border-emerald-500/30">
+                      TRACKS 50+ POSTS / OG ROLES
+                    </span>
+                  </div>
+
+                  <div className="space-y-4">
+                    {campaignList.map(p => (
+                      <div 
+                        key={p.id}
+                        className={`p-5 bg-[#040705] border transition-all space-y-4 ${
+                          selectedProject?.id === p.id 
+                            ? 'border-2 border-[#00E575] shadow-[0_0_20px_rgba(0,229,117,0.2)]' 
+                            : 'border-[#00E575]/30 hover:border-[#00E575]/60'
+                        }`}
+                      >
+                        <div className="flex justify-between items-start font-mono text-xs">
+                          <span className="text-emerald-400 font-bold flex items-center gap-1">
+                            <Crown className="w-3.5 h-3.5" /> TOP {p.topOgLimit} GET OG ROLE ({p.frequency})
+                          </span>
+                          <span className="text-white font-bold font-mono px-2 py-0.5 bg-[#00E575]/15 border border-[#00E575]/40">
+                            {p.totalEscrow} MERIT
+                          </span>
+                        </div>
+                        <h4 className="font-black text-white text-base">{p.name}</h4>
+                        <p className="text-xs text-slate-400 leading-relaxed">{p.description}</p>
+                        
+                        <div className="flex items-center justify-between text-[11px] font-mono text-slate-400 pt-1">
+                          <span>Tracked Submissions: <strong className="text-white">{p.totalSubmissionsTracked} Posts</strong></span>
+                        </div>
+
+                        <div className="flex gap-2 pt-2 border-t border-[#00E575]/20 font-mono text-xs">
+                          <button
+                            onClick={() => setSelectedProject(p)}
+                            className="btn-ritual-sharp flex-1 py-2 text-center font-bold uppercase"
+                          >
+                            Nộp Link X (Track History)
+                          </button>
+                          <button
+                            onClick={() => { setSelectedProject(p); setActiveTab('leaderboard'); }}
+                            className="btn-ritual-outline-sharp px-4 py-2 uppercase font-bold"
+                          >
+                            Xem Leaderboard
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
               </div>
 
-              {/* Selected Project Workspace & Submission */}
+              {/* Selected Item Submission Workspace */}
               {selectedProject && (
                 <div className="glass-card-sharp p-6 space-y-6 border-2 border-[#00E575]">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#00E575]/20 pb-6">
                     <div>
                       <span className="text-xs font-mono text-[#00E575] font-bold block mb-1">
-                        PROJECT #0{selectedProject.id} :: {selectedProject.category}
+                        SELECTED: {selectedProject.name} ({selectedProject.type})
                       </span>
-                      <h2 className="text-2xl font-black text-white uppercase">{selectedProject.name}</h2>
+                      <h3 className="text-2xl font-black text-white uppercase">{selectedProject.name}</h3>
                       <p className="text-xs text-slate-400 mt-1">{selectedProject.description}</p>
                     </div>
                     <div className="text-right shrink-0 font-mono">
                       <span className="text-2xl font-black text-[#00E575] block">{selectedProject.totalEscrow} MERIT</span>
-                      <span className="text-xs text-slate-400">ESCROW POOL • TOP {selectedProject.topOgLimit} GET OG ROLE</span>
+                      <span className="text-xs text-slate-400">CYCLE: {selectedProject.frequency} • TOP {selectedProject.topOgLimit} GET OG ROLE</span>
                     </div>
                   </div>
 
@@ -671,84 +756,88 @@ export default function DashboardApp() {
             </div>
           )}
 
-          {/* TAB 2: OPEN CAMPAIGN / PROJECT SETTINGS (FOR PROJECT OWNER) */}
-          {activeTab === 'console' && (
+          {/* TAB 2: OPEN CAMPAIGN / CONTEST CREATION (PROJECT OWNER MODE) */}
+          {activeTab === 'open_campaign' && (
             <div className="glass-card-sharp p-6 space-y-6">
               <div>
                 <h2 className="text-xl font-black text-white font-sans uppercase tracking-tight mb-1">
-                  02 // Open Campaign / Project Owner Settings
+                  02 // Open Campaign or Create Contest
                 </h2>
                 <p className="text-xs font-mono text-slate-400">
-                  Configure project rules, lock MERIT prize escrow pool, set mandatory mentions/hashtags, and assign monthly OG winner limits.
+                  Create a 1-off contest or continuous project campaign. Set OG Role limits (3 or 4), cycle frequency (weekly/monthly), and lock prize escrow.
                 </p>
               </div>
 
-              <form onSubmit={handleCreateProject} className="space-y-6 font-mono text-xs">
+              <form onSubmit={handleCreateCampaign} className="space-y-6 font-mono text-xs">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-slate-300 mb-2 uppercase">PROJECT NAME</label>
+                    <label className="block text-slate-300 mb-2 uppercase">CAMPAIGN / CONTEST NAME</label>
                     <input
                       type="text"
                       required
-                      value={newProjName}
-                      onChange={(e) => setNewProjName(e.target.value)}
-                      placeholder="e.g. Ritual AI Hackathon Hub"
+                      value={newCampaignName}
+                      onChange={(e) => setNewCampaignName(e.target.value)}
+                      placeholder="e.g. Ritual AI Hackathon Campaign"
                       className="w-full bg-[#040705] border border-[#00E575]/30 px-4 py-3 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-[#00E575]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-slate-300 mb-2 uppercase">CATEGORY</label>
-                    <input
-                      type="text"
-                      value={newProjCategory}
-                      onChange={(e) => setNewProjCategory(e.target.value)}
+                    <label className="block text-slate-300 mb-2 uppercase">TYPE</label>
+                    <select
+                      value={newCampaignType}
+                      onChange={(e: any) => setNewCampaignType(e.target.value)}
                       className="w-full bg-[#040705] border border-[#00E575]/30 px-4 py-3 text-xs text-white focus:outline-none focus:border-[#00E575]"
+                    >
+                      <option value="PROJECT_CAMPAIGN">Continuous Project Campaign (Track 50+ posts)</option>
+                      <option value="CONTEST">One-Off Contest (1 Submission per entry)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div>
+                    <label className="block text-slate-300 mb-2 uppercase">OG EVALUATION FREQUENCY</label>
+                    <select
+                      value={newCampaignFreq}
+                      onChange={(e: any) => setNewCampaignFreq(e.target.value)}
+                      className="w-full bg-[#040705] border border-[#00E575]/30 px-4 py-3 text-xs text-white focus:outline-none focus:border-[#00E575]"
+                    >
+                      <option value="MONTHLY">Monthly (Hàng Tháng)</option>
+                      <option value="WEEKLY">Weekly (Hàng Tuần)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-300 mb-2 uppercase">ALLOCATED OG ROLES (E.G. 3 OR 4)</label>
+                    <input
+                      type="number"
+                      value={newCampaignOgLimit}
+                      onChange={(e) => setNewCampaignOgLimit(e.target.value)}
+                      className="w-full bg-[#040705] border border-[#00E575]/30 px-4 py-3 text-xs text-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-300 mb-2 uppercase">ESCROW PRIZE POOL (MERIT)</label>
+                    <input
+                      type="number"
+                      value={newCampaignEscrow}
+                      onChange={(e) => setNewCampaignEscrow(e.target.value)}
+                      className="w-full bg-[#040705] border border-[#00E575]/30 px-4 py-3 text-xs text-white"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-slate-300 mb-2 uppercase">PROJECT DESCRIPTION & RUBRIC</label>
+                  <label className="block text-slate-300 mb-2 uppercase">CAMPAIGN DESCRIPTION & RUBRIC</label>
                   <textarea
                     rows={3}
-                    value={newProjDesc}
-                    onChange={(e) => setNewProjDesc(e.target.value)}
-                    placeholder="Describe project contribution criteria..."
+                    value={newCampaignDesc}
+                    onChange={(e) => setNewCampaignDesc(e.target.value)}
+                    placeholder="Describe campaign rules and criteria..."
                     className="w-full bg-[#040705] border border-[#00E575]/30 px-4 py-3 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-[#00E575]"
                   />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div>
-                    <label className="block text-slate-300 mb-2 uppercase">ESCROW PRIZE POOL (MERIT)</label>
-                    <input
-                      type="number"
-                      value={newProjEscrow}
-                      onChange={(e) => setNewProjEscrow(e.target.value)}
-                      className="w-full bg-[#040705] border border-[#00E575]/30 px-4 py-3 text-xs text-white"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-slate-300 mb-2 uppercase">MONTHLY OG WINNER LIMIT</label>
-                    <input
-                      type="number"
-                      value={newProjOgLimit}
-                      onChange={(e) => setNewProjOgLimit(e.target.value)}
-                      className="w-full bg-[#040705] border border-[#00E575]/30 px-4 py-3 text-xs text-white"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-slate-300 mb-2 uppercase">MINIMUM WORD COUNT</label>
-                    <input
-                      type="number"
-                      value={newProjMinWords}
-                      onChange={(e) => setNewProjMinWords(e.target.value)}
-                      className="w-full bg-[#040705] border border-[#00E575]/30 px-4 py-3 text-xs text-white"
-                    />
-                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -756,8 +845,8 @@ export default function DashboardApp() {
                     <label className="block text-slate-300 mb-2 uppercase">REQUIRED @MENTION</label>
                     <input
                       type="text"
-                      value={newProjMention}
-                      onChange={(e) => setNewProjMention(e.target.value)}
+                      value={newCampaignMention}
+                      onChange={(e) => setNewCampaignMention(e.target.value)}
                       className="w-full bg-[#040705] border border-[#00E575]/30 px-4 py-3 text-xs text-white"
                     />
                   </div>
@@ -766,18 +855,18 @@ export default function DashboardApp() {
                     <label className="block text-slate-300 mb-2 uppercase">REQUIRED #HASHTAG</label>
                     <input
                       type="text"
-                      value={newProjHashtag}
-                      onChange={(e) => setNewProjHashtag(e.target.value)}
+                      value={newCampaignHashtag}
+                      onChange={(e) => setNewCampaignHashtag(e.target.value)}
                       className="w-full bg-[#040705] border border-[#00E575]/30 px-4 py-3 text-xs text-white"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-slate-300 mb-2 uppercase">REQUIRED KEYWORD</label>
+                    <label className="block text-slate-300 mb-2 uppercase">MIN WORD COUNT</label>
                     <input
-                      type="text"
-                      value={newProjKeyword}
-                      onChange={(e) => setNewProjKeyword(e.target.value)}
+                      type="number"
+                      value={newCampaignMinWords}
+                      onChange={(e) => setNewCampaignMinWords(e.target.value)}
                       className="w-full bg-[#040705] border border-[#00E575]/30 px-4 py-3 text-xs text-white"
                     />
                   </div>
@@ -785,21 +874,21 @@ export default function DashboardApp() {
 
                 <button
                   type="submit"
-                  disabled={isCreatingProject}
+                  disabled={isCreatingCampaign}
                   className="btn-ritual-sharp w-full h-13 text-xs font-mono uppercase tracking-wider"
                 >
-                  {isCreatingProject ? "Saving Project & Lock Escrow..." : "Save Project Settings & Lock Escrow"}
+                  {isCreatingCampaign ? "Saving Campaign & Locking Escrow..." : "Activate Campaign & Lock Escrow Prize"}
                 </button>
               </form>
             </div>
           )}
 
-          {/* TAB 3: PARTICIPANT LIST & OG RANKINGS (WITH X LINK & DISCORD HANDLE) */}
+          {/* TAB 3: PARTICIPANT LIST & OG RANKINGS */}
           {activeTab === 'leaderboard' && (
             <div className="glass-card-sharp p-6 space-y-6">
               <div>
                 <h2 className="text-xl font-black text-white font-sans uppercase tracking-tight mb-1">
-                  03 // Project Participant List & Un-Biased Ranking
+                  03 // Participant List & Un-Biased Ranking
                 </h2>
                 <p className="text-xs font-mono text-slate-400">
                   Transparent ranking calculated automatically by Ritual AI. Displays X post link, Discord username, quality score, and OG Role qualification.
@@ -856,7 +945,7 @@ export default function DashboardApp() {
             </div>
           )}
 
-          {/* TAB 4: REPUTATION */}
+          {/* TAB 4: REPUTATION BADGES */}
           {activeTab === 'reputation' && (
             <div className="space-y-6">
               <div className="glass-card-sharp p-6 space-y-6">
