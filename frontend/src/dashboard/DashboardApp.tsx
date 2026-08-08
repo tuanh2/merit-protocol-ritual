@@ -164,19 +164,27 @@ export default function DashboardApp() {
     const evalResult = evaluateSubmissionContent(fetchedText, activeModalItem.requirements, activeModalItem.description);
 
     try {
-      let hash: string;
-      if (account) {
-        try {
-          // Attempt real contract call on Ritual Testnet
-          hash = await submitEntryOnChain(activeModalItem.id, submissionUrl, account);
-        } catch (contractErr) {
-          console.warn("On-chain contract call fallback:", contractErr);
-          // Fallback transaction hash if contest ID on-chain is inactive or block expired
-          hash = `0x${Array.from({length: 64}, () => Math.floor(Math.random()*16).toString(16)).join('')}`;
+      let currentAccount = account;
+      if (!currentAccount) {
+        const ethereum = (window as any).ethereum;
+        if (typeof ethereum !== 'undefined') {
+          const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+          if (accounts && accounts.length > 0) {
+            currentAccount = accounts[0];
+            setAccount(currentAccount);
+          }
         }
-      } else {
-        hash = `0x${Array.from({length: 64}, () => Math.floor(Math.random()*16).toString(16)).join('')}`;
       }
+
+      if (!currentAccount) {
+        alert("Please connect your MetaMask wallet to sign and submit on-chain.");
+        setIsSubmitting(false);
+        setSubmissionStatus(null);
+        return;
+      }
+
+      // STRICT 100% REAL ON-CHAIN METAMASK SIGNATURE! PROMPTS METAMASK EVERY TIME!
+      const hash = await submitEntryOnChain(activeModalItem.id, submissionUrl, currentAccount);
 
       setTxHash(hash);
       setSubmissionStatus('TX_BROADCASTED_ON_RITUAL');

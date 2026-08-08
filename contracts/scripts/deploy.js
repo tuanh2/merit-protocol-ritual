@@ -70,7 +70,7 @@ async function main() {
     "Explain Ritual AI Precompiles",
     "Create a guide explaining Ritual AI Precompiles (0x0801 & 0x0802). Requirements: include @Ritual, hashtag #RitualTestnet, keyword 'Precompile'.",
     currentBlock,
-    currentBlock + 50000,
+    currentBlock + 10000000,
     tokenAddress,
     prizeAmount,
     3,
