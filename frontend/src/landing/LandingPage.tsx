@@ -18,7 +18,8 @@ import {
   Activity,
   Layers3,
   UserCheck,
-  Send
+  Send,
+  XCircle
 } from 'lucide-react';
 import GreenSmokeCursor from '../components/GreenSmokeCursor';
 
@@ -26,6 +27,9 @@ export default function LandingPage() {
   const [introFinished, setIntroFinished] = useState(false);
   const [progress, setProgress] = useState(0);
   const [introStepText, setIntroStepText] = useState("INITIALIZING RITUAL ENCLAVE");
+
+  // Workflow Modal State (Pops up when clicking 03 WORKFLOW!)
+  const [showWorkflowModal, setShowWorkflowModal] = useState(false);
 
   // Terminal Boot Sequence
   useEffect(() => {
@@ -53,6 +57,13 @@ export default function LandingPage() {
 
     return () => clearInterval(interval);
   }, []);
+
+  function handleNavClick(targetId: string) {
+    const el = document.getElementById(targetId);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[#040705] text-slate-100 font-sans relative overflow-hidden select-none ritual-bg-grid-sharp">
@@ -121,9 +132,24 @@ export default function LandingPage() {
         </div>
 
         <nav className="hidden md:flex items-center gap-8 text-xs font-mono tracking-wider uppercase font-semibold text-slate-300">
-          <a href="#features" className="hover:text-[#00E575] transition-colors">01 FEATURES</a>
-          <a href="#infrastructure" className="hover:text-[#00E575] transition-colors">02 ARCHITECTURE</a>
-          <a href="#workflow" className="hover:text-[#00E575] transition-colors">03 WORKFLOW</a>
+          <button 
+            onClick={() => handleNavClick('features')} 
+            className="hover:text-[#00E575] transition-colors cursor-pointer"
+          >
+            01 FEATURES
+          </button>
+          <button 
+            onClick={() => handleNavClick('infrastructure')} 
+            className="hover:text-[#00E575] transition-colors cursor-pointer"
+          >
+            02 ARCHITECTURE
+          </button>
+          <button 
+            onClick={() => { setShowWorkflowModal(true); handleNavClick('workflow'); }} 
+            className="hover:text-[#00E575] text-[#00E575] font-bold transition-colors cursor-pointer px-3 py-1 bg-[#00E575]/10 border border-[#00E575]/30"
+          >
+            03 WORKFLOW
+          </button>
         </nav>
 
         <a 
@@ -142,7 +168,7 @@ export default function LandingPage() {
           <span>AUTONOMOUS REPUTATION AND CONTEST REWARD PROTOCOL</span>
         </div>
 
-        {/* 3 STRICT LINES FORCED WITH BLOCK & BR */}
+        {/* 3 STRICT LINES FORCED WITH BLOCK */}
         <h1 className="text-[clamp(36px,5.5vw,76px)] font-black text-white leading-[1.12] tracking-[-0.03em] max-w-[1100px] mb-8 font-sans uppercase">
           <span className="block w-full">PROJECTS DEFINE RULES</span>
           <span className="block w-full text-[#00E575]">CREATORS SUBMIT</span>
@@ -161,12 +187,13 @@ export default function LandingPage() {
             <span>Launch Web Application</span>
             <ArrowRight className="w-5 h-5" />
           </a>
-          <a 
-            href="#workflow" 
-            className="btn-ritual-outline-sharp h-14 px-8 text-sm font-mono uppercase tracking-wider flex items-center justify-center font-bold"
+          <button 
+            onClick={() => { setShowWorkflowModal(true); handleNavClick('workflow'); }}
+            className="btn-ritual-outline-sharp h-14 px-8 text-sm font-mono uppercase tracking-wider flex items-center justify-center gap-2 font-bold cursor-pointer"
           >
-            Explore Workflow
-          </a>
+            <span>Explore Workflow</span>
+            <Layers className="w-4 h-4 text-[#00E575]" />
+          </button>
         </div>
       </section>
 
@@ -340,41 +367,53 @@ export default function LandingPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 font-mono text-xs">
           
-          <div className="glass-card-sharp p-6 space-y-4 border border-[#00E575]/30">
-            <div className="w-10 h-10 bg-[#00E575]/20 text-[#00E575] flex items-center justify-center font-bold text-base border border-[#00E575]/40">
+          <div 
+            onClick={() => setShowWorkflowModal(true)}
+            className="glass-card-sharp p-6 space-y-4 border border-[#00E575]/30 hover:border-[#00E575] transition-all cursor-pointer group"
+          >
+            <div className="w-10 h-10 bg-[#00E575]/20 text-[#00E575] flex items-center justify-center font-bold text-base border border-[#00E575]/40 group-hover:bg-[#00E575] group-hover:text-[#040705] transition-colors">
               01
             </div>
-            <h3 className="font-extrabold text-white text-base uppercase font-sans">1 Create Campaign</h3>
+            <h3 className="font-extrabold text-white text-base uppercase font-sans group-hover:text-[#00E575] transition-colors">1 Create Campaign</h3>
             <p className="text-slate-400 text-xs leading-relaxed font-sans">
               Project owner locks prize escrow on chain and defines evaluation rubric requirements
             </p>
           </div>
 
-          <div className="glass-card-sharp p-6 space-y-4 border border-[#00E575]/30">
-            <div className="w-10 h-10 bg-[#00E575]/20 text-[#00E575] flex items-center justify-center font-bold text-base border border-[#00E575]/40">
+          <div 
+            onClick={() => setShowWorkflowModal(true)}
+            className="glass-card-sharp p-6 space-y-4 border border-[#00E575]/30 hover:border-[#00E575] transition-all cursor-pointer group"
+          >
+            <div className="w-10 h-10 bg-[#00E575]/20 text-[#00E575] flex items-center justify-center font-bold text-base border border-[#00E575]/40 group-hover:bg-[#00E575] group-hover:text-[#040705] transition-colors">
               02
             </div>
-            <h3 className="font-extrabold text-white text-base uppercase font-sans">2 Submit Entry</h3>
+            <h3 className="font-extrabold text-white text-base uppercase font-sans group-hover:text-[#00E575] transition-colors">2 Submit Entry</h3>
             <p className="text-slate-400 text-xs leading-relaxed font-sans">
               Contributor signs wallet transaction submitting post link and discord username
             </p>
           </div>
 
-          <div className="glass-card-sharp p-6 space-y-4 border border-[#00E575]/30">
-            <div className="w-10 h-10 bg-[#00E575]/20 text-[#00E575] flex items-center justify-center font-bold text-base border border-[#00E575]/40">
+          <div 
+            onClick={() => setShowWorkflowModal(true)}
+            className="glass-card-sharp p-6 space-y-4 border border-[#00E575]/30 hover:border-[#00E575] transition-all cursor-pointer group"
+          >
+            <div className="w-10 h-10 bg-[#00E575]/20 text-[#00E575] flex items-center justify-center font-bold text-base border border-[#00E575]/40 group-hover:bg-[#00E575] group-hover:text-[#040705] transition-colors">
               03
             </div>
-            <h3 className="font-extrabold text-white text-base uppercase font-sans">3 Ritual AI Evaluates</h3>
+            <h3 className="font-extrabold text-white text-base uppercase font-sans group-hover:text-[#00E575] transition-colors">3 Ritual AI Evaluates</h3>
             <p className="text-slate-400 text-xs leading-relaxed font-sans">
               Precompile 0x0801 fetches tweet data and 0x0802 computes GLM 4.7 FP8 quality score inside TEE
             </p>
           </div>
 
-          <div className="glass-card-sharp p-6 space-y-4 border border-[#00E575]/30">
-            <div className="w-10 h-10 bg-[#00E575]/20 text-[#00E575] flex items-center justify-center font-bold text-base border border-[#00E575]/40">
+          <div 
+            onClick={() => setShowWorkflowModal(true)}
+            className="glass-card-sharp p-6 space-y-4 border border-[#00E575]/30 hover:border-[#00E575] transition-all cursor-pointer group"
+          >
+            <div className="w-10 h-10 bg-[#00E575]/20 text-[#00E575] flex items-center justify-center font-bold text-base border border-[#00E575]/40 group-hover:bg-[#00E575] group-hover:text-[#040705] transition-colors">
               04
             </div>
-            <h3 className="font-extrabold text-white text-base uppercase font-sans">4 Rank and OG Award</h3>
+            <h3 className="font-extrabold text-white text-base uppercase font-sans group-hover:text-[#00E575] transition-colors">4 Rank and OG Award</h3>
             <p className="text-slate-400 text-xs leading-relaxed font-sans">
               Leaderboard ranks top contributors and automatically assigns OG role credentials
             </p>
@@ -382,6 +421,88 @@ export default function LandingPage() {
 
         </div>
       </section>
+
+      {/* WORKFLOW INTERACTIVE MODAL */}
+      {showWorkflowModal && (
+        <div className="fixed inset-0 z-50 bg-[#040705]/95 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 font-mono">
+          <div className="max-w-3xl w-full glass-card-sharp p-8 space-y-6 border-2 border-[#00E575] max-h-[90vh] overflow-y-auto">
+            
+            <div className="flex items-center justify-between border-b border-[#00E575]/20 pb-4">
+              <div>
+                <span className="text-xs text-[#00E575] font-bold block mb-1">SYSTEM ARCHITECTURE WORKFLOW</span>
+                <h2 className="text-2xl font-black text-white uppercase font-sans">Ritual AI Precompile Workflow Diagram</h2>
+              </div>
+              <button
+                onClick={() => setShowWorkflowModal(false)}
+                className="text-slate-400 hover:text-white px-3 py-1 border border-[#00E575]/30 text-xs font-bold uppercase"
+              >
+                CLOSE
+              </button>
+            </div>
+
+            <div className="space-y-4 font-mono text-xs">
+              <div className="p-4 bg-[#07110c] border border-[#00E575]/40 flex items-start gap-4">
+                <div className="w-8 h-8 bg-[#00E575] text-[#040705] flex items-center justify-center font-bold text-sm shrink-0">
+                  01
+                </div>
+                <div>
+                  <h4 className="font-bold text-white uppercase text-sm mb-1">Project Campaign Creation & Escrow Lock</h4>
+                  <p className="text-slate-300 leading-relaxed">
+                    Project owners define mandatory rubrics (required @mentions, #hashtags, minimum words) and lock Merit token rewards in smart contract escrow prior to participant entry
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-4 bg-[#07110c] border border-[#00E575]/40 flex items-start gap-4">
+                <div className="w-8 h-8 bg-[#00E575] text-[#040705] flex items-center justify-center font-bold text-sm shrink-0">
+                  02
+                </div>
+                <div>
+                  <h4 className="font-bold text-white uppercase text-sm mb-1">Contributor Wallet Signature & URL Submission</h4>
+                  <p className="text-slate-300 leading-relaxed">
+                    Contributors sign MetaMask wallet transactions submitting their public X post link and Discord handle directly onto Ritual Testnet
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-4 bg-[#07110c] border border-[#00E575]/40 flex items-start gap-4">
+                <div className="w-8 h-8 bg-[#00E575] text-[#040705] flex items-center justify-center font-bold text-sm shrink-0">
+                  03
+                </div>
+                <div>
+                  <h4 className="font-bold text-white uppercase text-sm mb-1">Ritual Precompile 0x0801 & 0x0802 TEE Evaluation</h4>
+                  <p className="text-slate-300 leading-relaxed">
+                    Ritual Precompile 0x0801 auto-fetches tweet body text via TEE HTTP proxy while Precompile 0x0802 runs GLM-4.7-FP8 LLM scoring inside TEE enclaves without human bias
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-4 bg-[#07110c] border border-[#00E575]/40 flex items-start gap-4">
+                <div className="w-8 h-8 bg-[#00E575] text-[#040705] flex items-center justify-center font-bold text-sm shrink-0">
+                  04
+                </div>
+                <div>
+                  <h4 className="font-bold text-white uppercase text-sm mb-1">On-Chain Ranking & Automatic OG Badge Minting</h4>
+                  <p className="text-slate-300 leading-relaxed">
+                    Leaderboard ranks top participants transparently and automatically issues non-transferable Soulbound OG credentials to top performers
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4 flex justify-end">
+              <a
+                href="/app.html"
+                className="btn-ritual-sharp h-12 px-6 text-xs font-mono uppercase tracking-wider flex items-center justify-center font-bold gap-2"
+              >
+                <span>Launch App Now</span>
+                <ArrowRight className="w-4 h-4" />
+              </a>
+            </div>
+
+          </div>
+        </div>
+      )}
 
       {/* Call to Action Container Section */}
       <section className="relative z-10 max-w-[1400px] mx-auto px-6 py-20">
