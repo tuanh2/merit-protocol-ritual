@@ -1,5 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { 
+  ShieldCheck, 
+  Wallet, 
+  Trophy, 
+  Award, 
+  ExternalLink, 
+  CheckCircle2, 
+  Send, 
+  Crown, 
+  Link as LinkIcon, 
+  User, 
+  MessageSquare,
+  PlusCircle,
+  XCircle,
+  FolderPlus,
+  Settings,
+  Sparkles,
+  BarChart3
+} from 'lucide-react';
+import { 
   fetchChainStatus, 
   getAddresses, 
   submitEntryOnChain,
@@ -219,7 +238,7 @@ export default function DashboardApp() {
         <div className="max-w-[1350px] mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <a href="/index.html" className="w-10 h-10 bg-[#00E575] text-[#040705] flex items-center justify-center font-black border border-[#00E575]">
-              M
+              <ShieldCheck className="w-6 h-6 text-[#040705]" />
             </a>
             <div>
               <div className="flex items-center gap-2">
@@ -239,23 +258,25 @@ export default function DashboardApp() {
             <div className="flex items-center bg-[#040705] border border-[#00E575]/40 p-1">
               <button
                 onClick={() => setActiveMode('contributor')}
-                className={`px-4 py-2 font-bold uppercase transition-all ${
+                className={`px-4 py-2 font-bold uppercase transition-all flex items-center gap-1.5 ${
                   activeMode === 'contributor' 
                     ? 'bg-[#00E575] text-[#040705]' 
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
-                Contributor Hub
+                <User className="w-4 h-4" />
+                <span>Contributor Hub</span>
               </button>
               <button
                 onClick={() => setActiveMode('owner')}
-                className={`px-4 py-2 font-bold uppercase transition-all ${
+                className={`px-4 py-2 font-bold uppercase transition-all flex items-center gap-1.5 ${
                   activeMode === 'owner' 
                     ? 'bg-[#00E575] text-[#040705]' 
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
-                Project Owner
+                <Settings className="w-4 h-4" />
+                <span>Project Owner</span>
               </button>
             </div>
 
@@ -271,6 +292,7 @@ export default function DashboardApp() {
                 disabled={isConnecting}
                 className="btn-ritual-sharp h-10 px-5 uppercase tracking-wider flex items-center gap-2 font-bold"
               >
+                <Wallet className="w-4 h-4" />
                 <span>{isConnecting ? "Connecting" : "Connect Wallet"}</span>
               </button>
             )}
@@ -299,7 +321,10 @@ export default function DashboardApp() {
               {/* COLUMN 1: ONE-OFF CONTESTS */}
               <div className="glass-card-sharp p-6 space-y-6 border-t-4 border-t-[#00E575]">
                 <div className="flex items-center justify-between border-b border-[#00E575]/20 pb-4 font-mono">
-                  <h2 className="font-black text-white text-lg uppercase">One-Off Contests</h2>
+                  <div className="flex items-center gap-2">
+                    <Trophy className="w-5 h-5 text-[#00E575]" />
+                    <h2 className="font-black text-white text-lg uppercase">One-Off Contests</h2>
+                  </div>
                   <span className="text-[11px] text-[#00E575] font-bold bg-[#00E575]/10 px-2.5 py-1 border border-[#00E575]/30">
                     SINGLE ENTRY PER USER
                   </span>
@@ -322,9 +347,11 @@ export default function DashboardApp() {
                       <p className="text-xs text-slate-400 leading-relaxed">{c.description}</p>
                       
                       <div className="pt-3 border-t border-[#00E575]/20 flex items-center justify-between text-xs font-mono text-slate-300">
-                        <span className="text-[#00E575] font-bold">Top {c.topOgLimit} Earn OG Role</span>
-                        <span className="group-hover:translate-x-1 transition-transform text-white font-bold">
-                          Participate Now
+                        <span className="text-[#00E575] font-bold flex items-center gap-1">
+                          <Crown className="w-3.5 h-3.5 text-[#00E575]" /> Top {c.topOgLimit} Earn OG Role
+                        </span>
+                        <span className="group-hover:translate-x-1 transition-transform text-white font-bold flex items-center gap-1">
+                          <span>Participate Now</span> ➔
                         </span>
                       </div>
                     </div>
@@ -335,7 +362,10 @@ export default function DashboardApp() {
               {/* COLUMN 2: CONTINUOUS PROJECT CAMPAIGNS */}
               <div className="glass-card-sharp p-6 space-y-6 border-t-4 border-t-emerald-400">
                 <div className="flex items-center justify-between border-b border-[#00E575]/20 pb-4 font-mono">
-                  <h2 className="font-black text-white text-lg uppercase">Project Campaigns</h2>
+                  <div className="flex items-center gap-2">
+                    <FolderPlus className="w-5 h-5 text-emerald-400" />
+                    <h2 className="font-black text-white text-lg uppercase">Project Campaigns</h2>
+                  </div>
                   <span className="text-[11px] text-emerald-400 font-bold bg-emerald-500/10 px-2.5 py-1 border border-emerald-500/30">
                     CONTINUOUS POST TRACKING
                   </span>
@@ -349,8 +379,8 @@ export default function DashboardApp() {
                       className="p-6 bg-[#040705] border border-[#00E575]/30 hover:border-[#00E575] transition-all cursor-pointer group space-y-3 hover:bg-[#07110c]"
                     >
                       <div className="flex justify-between items-center font-mono text-xs">
-                        <span className="text-emerald-400 font-bold">
-                          TOP {p.topOgLimit} GET OG ROLE ({p.frequency})
+                        <span className="text-emerald-400 font-bold flex items-center gap-1">
+                          <Crown className="w-3.5 h-3.5 text-emerald-400" /> TOP {p.topOgLimit} GET OG ROLE ({p.frequency})
                         </span>
                         <span className="text-white font-black font-mono px-3 py-1 bg-[#00E575]/15 border border-[#00E575]/40">
                           {p.totalEscrow} MERIT ESCROW
@@ -361,8 +391,8 @@ export default function DashboardApp() {
                       
                       <div className="pt-3 border-t border-[#00E575]/20 flex items-center justify-between text-xs font-mono text-slate-300">
                         <span className="text-slate-400">Tracked Submissions: <strong className="text-white">{p.totalSubmissionsTracked} Posts</strong></span>
-                        <span className="group-hover:translate-x-1 transition-transform text-white font-bold">
-                          Participate Now
+                        <span className="group-hover:translate-x-1 transition-transform text-white font-bold flex items-center gap-1">
+                          <span>Participate Now</span> ➔
                         </span>
                       </div>
                     </div>
@@ -520,9 +550,9 @@ export default function DashboardApp() {
 
               <button
                 onClick={() => setActiveModalItem(null)}
-                className="text-slate-400 hover:text-white px-2 py-1 border border-[#00E575]/30 text-xs font-bold uppercase"
+                className="text-slate-400 hover:text-white p-1"
               >
-                CLOSE
+                <XCircle className="w-6 h-6" />
               </button>
             </div>
 
@@ -556,8 +586,9 @@ export default function DashboardApp() {
                 <form onSubmit={handleProjectSubmit} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-mono uppercase text-slate-300 mb-2 font-bold">
-                        1. X Post Link
+                      <label className="block text-xs font-mono uppercase text-slate-300 mb-2 font-bold flex items-center gap-1.5">
+                        <LinkIcon className="w-4 h-4 text-[#00E575]" />
+                        <span>1. X Post Link</span>
                       </label>
                       <input
                         type="url"
@@ -570,8 +601,9 @@ export default function DashboardApp() {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-mono uppercase text-slate-300 mb-2 font-bold">
-                        2. Discord Username
+                      <label className="block text-xs font-mono uppercase text-slate-300 mb-2 font-bold flex items-center gap-1.5">
+                        <MessageSquare className="w-4 h-4 text-[#00E575]" />
+                        <span>2. Discord Username</span>
                       </label>
                       <input
                         type="text"
@@ -587,8 +619,9 @@ export default function DashboardApp() {
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="btn-ritual-sharp h-13 px-8 text-xs font-mono uppercase tracking-wider flex items-center justify-center font-bold w-full"
+                    className="btn-ritual-sharp h-13 px-8 text-xs font-mono uppercase tracking-wider flex items-center justify-center gap-2 font-bold w-full"
                   >
+                    <Send className="w-4 h-4" />
                     <span>{isSubmitting ? "Signing and Auto-Fetching Data" : `Sign Wallet and Submit Entry to ${activeModalItem.name}`}</span>
                   </button>
                 </form>
@@ -597,7 +630,10 @@ export default function DashboardApp() {
                 {txHash && (
                   <div className="p-5 bg-[#08150e] border-2 border-[#00E575] font-mono text-xs space-y-3">
                     <div className="flex items-center justify-between text-[#00E575] font-black uppercase text-sm">
-                      <span>TRANSACTION BROADCASTED ON RITUAL TESTNET</span>
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="w-5 h-5 text-[#00E575]" />
+                        <span>TRANSACTION BROADCASTED ON RITUAL TESTNET</span>
+                      </div>
                       <span className="bg-[#00E575] text-[#040705] px-2 py-0.5 text-[10px] font-bold">LIVE ON CHAIN</span>
                     </div>
 
@@ -611,9 +647,10 @@ export default function DashboardApp() {
                         href={`https://explorer.ritualfoundation.org/tx/${txHash}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="btn-ritual-sharp px-4 py-2 text-xs font-mono uppercase flex items-center justify-center font-bold shrink-0"
+                        className="btn-ritual-sharp px-4 py-2 text-xs font-mono uppercase flex items-center justify-center gap-1.5 font-bold shrink-0"
                       >
-                        View Explorer
+                        <span>View Explorer</span>
+                        <ExternalLink className="w-3.5 h-3.5" />
                       </a>
                     </div>
                   </div>
@@ -627,11 +664,17 @@ export default function DashboardApp() {
                       : 'bg-red-950/30 border-red-500'
                   }`}>
                     <div className="flex items-center justify-between">
-                      <div className="font-black text-sm uppercase">
+                      <div className="flex items-center gap-2 font-black text-sm uppercase">
                         {latestEvaluationResult.hasPassedHardReqs ? (
-                          <span className="text-[#00E575]">PASSED HIGH QUALITY SCORE</span>
+                          <>
+                            <CheckCircle2 className="w-5 h-5 text-[#00E575]" />
+                            <span className="text-[#00E575]">PASSED HIGH QUALITY SCORE</span>
+                          </>
                         ) : (
-                          <span className="text-red-400">FAILED LOW SCORE PENALTY</span>
+                          <>
+                            <XCircle className="w-5 h-5 text-red-500" />
+                            <span className="text-red-400">FAILED LOW SCORE PENALTY</span>
+                          </>
                         )}
                       </div>
                       <span className={`text-xl font-black px-3 py-1 border ${
@@ -673,8 +716,9 @@ export default function DashboardApp() {
                       {leaderboard.map((item, idx) => (
                         <tr key={idx} className={`hover:bg-[#00E575]/10 transition-colors ${item.isOgWinner ? 'bg-[#00E575]/5' : ''}`}>
                           <td className="py-3 px-3 font-bold text-[#00E575]">#{idx + 1}</td>
-                          <td className="py-3 px-3 font-bold text-white">
-                            {item.discordHandle || "discord_user#0001"}
+                          <td className="py-3 px-3 font-bold text-white flex items-center gap-1.5">
+                            <MessageSquare className="w-3.5 h-3.5 text-[#00E575]" />
+                            <span>{item.discordHandle || "discord_user#0001"}</span>
                           </td>
                           <td className="py-3 px-3 text-slate-300 font-medium">{item.submitter}</td>
                           <td className="py-3 px-3">
@@ -682,16 +726,17 @@ export default function DashboardApp() {
                               href={item.contentUrl}
                               target="_blank"
                               rel="noreferrer"
-                              className="text-[#00E575] underline font-bold"
+                              className="text-[#00E575] underline font-bold flex items-center gap-1"
                             >
-                              View Post
+                              <span>View Post</span>
+                              <ExternalLink className="w-3 h-3" />
                             </a>
                           </td>
                           <td className="py-3 px-3 font-bold text-white">{item.finalScore} / 100</td>
                           <td className="py-3 px-3">
                             {item.isOgWinner ? (
-                              <span className="px-2 py-0.5 bg-[#00E575] text-[#040705] font-black text-[10px] uppercase border border-[#00E575]">
-                                OG QUALIFIED
+                              <span className="px-2 py-0.5 bg-[#00E575] text-[#040705] font-black text-[10px] uppercase border border-[#00E575] flex items-center gap-1 w-max">
+                                <Crown className="w-3 h-3" /> OG QUALIFIED
                               </span>
                             ) : (
                               <span className="text-slate-500 text-[11px]">CONTRIBUTOR</span>
