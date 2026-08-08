@@ -55,9 +55,9 @@ export default function DashboardApp() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardItem[]>(SHOWCASE_LEADERBOARD);
   const [submissions, setSubmissions] = useState<SubmissionData[]>(SHOWCASE_SUBMISSIONS);
 
-  // Submission Inputs
-  const [submissionUrl, setSubmissionUrl] = useState('https://x.com/crypto_builder/status/19824001');
-  const [discordHandle, setDiscordHandle] = useState('builder#1234');
+  // Submission Inputs (Empty by default for real user entry!)
+  const [submissionUrl, setSubmissionUrl] = useState('');
+  const [discordHandle, setDiscordHandle] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionStatus, setSubmissionStatus] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
@@ -333,7 +333,7 @@ export default function DashboardApp() {
                   {contestList.map(c => (
                     <div 
                       key={c.id}
-                      onClick={() => { setActiveModalItem(c); setModalTab('submit'); }}
+                      onClick={() => { setActiveModalItem(c); setModalTab('submit'); setSubmissionUrl(''); setDiscordHandle(''); setTxHash(null); setLatestEvaluationResult(null); }}
                       className="p-6 bg-[#040705] border border-[#00E575]/30 hover:border-[#00E575] transition-all cursor-pointer group space-y-3 hover:bg-[#07110c]"
                     >
                       <div className="flex justify-between items-center font-mono text-xs">
@@ -374,7 +374,7 @@ export default function DashboardApp() {
                   {campaignList.map(p => (
                     <div 
                       key={p.id}
-                      onClick={() => { setActiveModalItem(p); setModalTab('submit'); }}
+                      onClick={() => { setActiveModalItem(p); setModalTab('submit'); setSubmissionUrl(''); setDiscordHandle(''); setTxHash(null); setLatestEvaluationResult(null); }}
                       className="p-6 bg-[#040705] border border-[#00E575]/30 hover:border-[#00E575] transition-all cursor-pointer group space-y-3 hover:bg-[#07110c]"
                     >
                       <div className="flex justify-between items-center font-mono text-xs">
