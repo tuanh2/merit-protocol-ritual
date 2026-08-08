@@ -685,10 +685,10 @@ export default function DashboardApp() {
                         </div>
                       </div>
 
-                      {/* AI Evaluation Reason */}
+                      {/* AI Evaluation Reason - Clean Feedback Only */}
                       {sub.failureReason && (
                         <div className="bg-[#07110c] p-3 border border-[#00E575]/30 text-slate-300 leading-relaxed text-[11px] whitespace-pre-wrap">
-                          {sub.failureReason}
+                          {sub.failureReason.replace(/\n\nFetched Content Preview:[\s\S]*/g, '').replace(/Fetched Content Preview:[\s\S]*/g, '')}
                         </div>
                       )}
                     </div>
