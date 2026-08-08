@@ -160,8 +160,8 @@ export default function DashboardApp() {
     // 1. Auto-Fetch Post Content Direct from X URL via Precompile 0x0801 HTTP Engine
     const fetchedText = fetchXPostTextFromUrl(submissionUrl);
 
-    // 2. Evaluate Fetched Post Content against Project's Requirements
-    const evalResult = evaluateSubmissionContent(fetchedText, activeModalItem.requirements);
+    // 2. Evaluate Fetched Post Content against Project's Docs & Custom Rubric Guidelines
+    const evalResult = evaluateSubmissionContent(fetchedText, activeModalItem.requirements, activeModalItem.description);
 
     try {
       let hash: string;
