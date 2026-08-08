@@ -18,7 +18,8 @@ import {
   Sparkles,
   BarChart3,
   History,
-  FileText
+  FileText,
+  Layers
 } from 'lucide-react';
 import { 
   fetchChainStatus, 
@@ -29,37 +30,55 @@ import {
   fetchXPostTextFromUrl,
   evaluateSubmissionContent,
   publicClient,
-  SHOWCASE_PROJECTS,
+  SHOWCASE_CONTESTS,
+  SHOWCASE_CAMPAIGNS,
   SHOWCASE_LEADERBOARD, 
   SHOWCASE_SUBMISSIONS,
-  ProjectCampaignData,
+  ContestData,
+  CampaignData,
   SubmissionData,
   LeaderboardItem
 } from '../services/rpc';
 
 export default function DashboardApp() {
-  // Mode: 'contributor' (Default) OR 'owner' (Project Owner / Campaign Creator)
+  // Main Navigation Mode: 'contributor' OR 'owner'
   const [activeMode, setActiveMode] = useState<'contributor' | 'owner'>('contributor');
+
+  // Contributor Workspace View: 'contests' OR 'campaigns'
+  const [contributorTab, setContributorTab] = useState<'contests' | 'campaigns'>('contests');
+
+  // Owner Creation View: 'create_contest' OR 'create_campaign'
+  const [ownerFormTab, setOwnerFormTab] = useState<'create_contest' | 'create_campaign'>('create_contest');
 
   const [account, setAccount] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [blockHeight, setBlockHeight] = useState<number>(104520);
 
-  // Projects & Campaigns State (Exactly 1 Contest & 1 Project Campaign)
-  const [projects, setProjects] = useState<ProjectCampaignData[]>(() => {
-    const saved = localStorage.getItem('merit_protocol_projects');
+  // SEPARATE STATE 1: CONTESTS (Stored separately in localStorage)
+  const [contests, setContests] = useState<ContestData[]>(() => {
+    const saved = localStorage.getItem('merit_protocol_contests');
     if (saved) {
       try { return JSON.parse(saved); } catch (e) {}
     }
-    return SHOWCASE_PROJECTS;
+    return SHOWCASE_CONTESTS;
+  });
+
+  // SEPARATE STATE 2: PROJECT CAMPAIGNS (Stored separately in localStorage)
+  const [campaigns, setCampaigns] = useState<CampaignData[]>(() => {
+    const saved = localStorage.getItem('merit_protocol_campaigns');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return SHOWCASE_CAMPAIGNS;
   });
   
-  // Selected Item Modal State
-  const [activeModalItem, setActiveModalItem] = useState<ProjectCampaignData | null>(null);
+  // Selected Item Modal Context
+  const [activeModalItem, setActiveModalItem] = useState<{ type: 'CONTEST' | 'CAMPAIGN'; item: ContestData | CampaignData } | null>(null);
   const [modalTab, setModalTab] = useState<'submit' | 'leaderboard'>('submit');
 
   // Profile Modal State
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [profileHistoryTab, setProfileHistoryTab] = useState<'contests' | 'campaigns'>('contests');
 
   // Submissions & Leaderboard Persistent State
   const [submissions, setSubmissions] = useState<SubmissionData[]>(() => {
@@ -80,8 +99,12 @@ export default function DashboardApp() {
 
   // Save to LocalStorage whenever state updates
   useEffect(() => {
-    localStorage.setItem('merit_protocol_projects', JSON.stringify(projects));
-  }, [projects]);
+    localStorage.setItem('merit_protocol_contests', JSON.stringify(contests));
+  }, [contests]);
+
+  useEffect(() => {
+    localStorage.setItem('merit_protocol_campaigns', JSON.stringify(campaigns));
+  }, [campaigns]);
 
   useEffect(() => {
     localStorage.setItem('merit_protocol_submissions', JSON.stringify(submissions));
@@ -91,29 +114,34 @@ export default function DashboardApp() {
     localStorage.setItem('merit_protocol_leaderboard', JSON.stringify(leaderboard));
   }, [leaderboard]);
 
-  // Submission Inputs (Empty by default for real user entry!)
+  // Submission Inputs
   const [submissionUrl, setSubmissionUrl] = useState('');
   const [discordHandle, setDiscordHandle] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionStatus, setSubmissionStatus] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
 
-  // New Campaign Form (Owner Mode)
+  // Form State: Create Contest
+  const [newContestTitle, setNewContestTitle] = useState('');
+  const [newContestDesc, setNewContestDesc] = useState('');
+  const [newContestPrize, setNewContestPrize] = useState('1000');
+  const [newContestWinners, setNewContestWinners] = useState('3');
+  const [newContestMinWords, setNewContestMinWords] = useState('50');
+  const [newContestMention, setNewContestMention] = useState('@Ritual');
+  const [newContestHashtag, setNewContestHashtag] = useState('#RitualTestnet');
+
+  // Form State: Create Campaign
   const [newCampaignName, setNewCampaignName] = useState('');
-  const [newCampaignType, setNewCampaignType] = useState<'CONTEST' | 'PROJECT_CAMPAIGN'>('PROJECT_CAMPAIGN');
   const [newCampaignFreq, setNewCampaignFreq] = useState<'WEEKLY' | 'MONTHLY'>('MONTHLY');
   const [newCampaignCategory, setNewCampaignCategory] = useState('AI Infrastructure');
   const [newCampaignDesc, setNewCampaignDesc] = useState('');
-  const [newCampaignEscrow, setNewCampaignEscrow] = useState('3000');
-  const [newCampaignOgLimit, setNewCampaignOgLimit] = useState('3');
+  const [newCampaignEscrow, setNewCampaignEscrow] = useState('5000');
+  const [newCampaignOgLimit, setNewCampaignOgLimit] = useState('4');
   const [newCampaignMinWords, setNewCampaignMinWords] = useState('50');
   const [newCampaignMention, setNewCampaignMention] = useState('@Ritual');
-  const [newCampaignHashtag, setNewCampaignHashtag] = useState('#RitualTestnet');
-  const [isCreatingCampaign, setIsCreatingCampaign] = useState(false);
+  const [newCampaignHashtag, setNewCampaignHashtag] = useState('#RitualNetwork');
 
-  // Filter 2 Columns (1 Contest & 1 Project Campaign)
-  const contestList = projects.filter(p => p.type === 'CONTEST');
-  const campaignList = projects.filter(p => p.type === 'PROJECT_CAMPAIGN');
+  const [isCreating, setIsCreating] = useState(false);
 
   // Load RPC Chain Status
   useEffect(() => {
@@ -157,11 +185,14 @@ export default function DashboardApp() {
     setSubmissionStatus('AWAITING_WALLET_SIGNATURE');
     setTxHash(null);
 
+    const activeItem = activeModalItem.item;
+    const isContest = activeModalItem.type === 'CONTEST';
+
     // 1. Auto-Fetch Post Content Direct from X URL via Precompile 0x0801 HTTP Engine
     const fetchedText = fetchXPostTextFromUrl(submissionUrl);
 
     // 2. Evaluate Fetched Post Content against Project's Docs & Custom Rubric Guidelines
-    const evalResult = evaluateSubmissionContent(fetchedText, activeModalItem.requirements, activeModalItem.description);
+    const evalResult = evaluateSubmissionContent(fetchedText, activeItem.requirements, activeItem.description);
 
     try {
       let currentAccount = account;
@@ -184,18 +215,20 @@ export default function DashboardApp() {
       }
 
       // STRICT 100% REAL ON-CHAIN METAMASK SIGNATURE! PROMPTS METAMASK EVERY TIME!
-      const hash = await submitEntryOnChain(activeModalItem.id, submissionUrl, currentAccount);
+      const hash = await submitEntryOnChain(activeItem.id, submissionUrl, currentAccount);
 
       setTxHash(hash);
       setSubmissionStatus('TX_BROADCASTED_ON_RITUAL');
 
       setTimeout(() => {
         const newSubId = Date.now();
-        const submitterAddr = account ? `${account.substring(0, 6)}...${account.substring(38)}` : "0xUSER...42A1";
+        const submitterAddr = currentAccount ? `${currentAccount.substring(0, 6)}...${currentAccount.substring(38)}` : "0xUSER...42A1";
 
         const newSubmission: SubmissionData = {
           id: newSubId,
-          projectId: activeModalItem.id,
+          targetType: isContest ? 'CONTEST' : 'CAMPAIGN',
+          targetId: activeItem.id,
+          projectId: activeItem.id,
           submitter: submitterAddr,
           discordHandle: discordHandle,
           submissionBlock: blockHeight + 2,
@@ -212,14 +245,22 @@ export default function DashboardApp() {
         // Save to persistent user profile history
         setSubmissions(prev => [newSubmission, ...prev]);
 
-        // Update Project Trackers & Leaderboard
-        setProjects(prev => prev.map(p => p.id === activeModalItem.id ? { ...p, totalSubmissionsTracked: p.totalSubmissionsTracked + 1 } : p));
+        // Update Submission Counters in isolated datasets
+        if (isContest) {
+          setContests(prev => prev.map(c => c.id === activeItem.id ? { ...c, totalSubmissions: c.totalSubmissions + 1 } : c));
+        } else {
+          setCampaigns(prev => prev.map(c => c.id === activeItem.id ? { ...c, totalSubmissionsTracked: c.totalSubmissionsTracked + 1 } : c));
+        }
 
+        // Update Leaderboard
         setLeaderboard(prev => {
+          const topLimit = isContest ? (activeItem as ContestData).topWinnersLimit : (activeItem as CampaignData).topOgLimit;
           const updated = [
             { 
               submissionId: newSubId, 
-              projectId: activeModalItem.id,
+              targetType: isContest ? 'CONTEST' as const : 'CAMPAIGN' as const,
+              targetId: activeItem.id,
+              projectId: activeItem.id,
               submitter: submitterAddr, 
               discordHandle: discordHandle,
               contentUrl: submissionUrl,
@@ -232,7 +273,7 @@ export default function DashboardApp() {
 
           return updated.map((item, index) => ({
             ...item,
-            isOgWinner: index < activeModalItem.topOgLimit && item.finalScore >= 80
+            isOgWinner: index < topLimit && item.finalScore >= 80
           }));
         });
 
@@ -240,49 +281,82 @@ export default function DashboardApp() {
       }, 2000);
     } catch (err: any) {
       console.error(err);
-      alert(err.message || "Transaction failed");
+      alert(err.message || "Transaction failed or user rejected signature");
       setIsSubmitting(false);
       setSubmissionStatus(null);
     }
   }
 
-  // Handle Project Owner Campaign Creation
+  // Create Contest
+  async function handleCreateContest(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newContestTitle) return;
+
+    setIsCreating(true);
+    setTimeout(() => {
+      const createdContest: ContestData = {
+        id: contests.length + 1,
+        title: newContestTitle,
+        category: "Contest",
+        description: newContestDesc || "One-off competition with AI precompile evaluation and prize escrow",
+        totalPrizeEscrow: `${newContestPrize} MERIT`,
+        topWinnersLimit: Number(newContestWinners),
+        totalSubmissions: 0,
+        requirements: {
+          minWords: Number(newContestMinWords),
+          requiredMentions: [newContestMention],
+          requiredHashtags: [newContestHashtag],
+          requiredKeywords: ["Precompile"],
+        }
+      };
+
+      setContests(prev => [...prev, createdContest]);
+      setIsCreating(false);
+      setActiveMode('contributor');
+      setContributorTab('contests');
+      alert(`Contest ${newContestTitle} created successfully and locked in escrow!`);
+    }, 1200);
+  }
+
+  // Create Campaign
   async function handleCreateCampaign(e: React.FormEvent) {
     e.preventDefault();
     if (!newCampaignName) return;
 
-    setIsCreatingCampaign(true);
+    setIsCreating(true);
     setTimeout(() => {
-      const createdItem: ProjectCampaignData = {
-        id: projects.length + 1,
+      const createdCampaign: CampaignData = {
+        id: campaigns.length + 1,
         name: newCampaignName,
-        type: newCampaignType,
         frequency: newCampaignFreq,
         category: newCampaignCategory,
-        description: newCampaignDesc || "Campaign space with AI evaluation and OG role distribution",
-        totalEscrow: newCampaignEscrow,
+        description: newCampaignDesc || "Continuous project space with AI evaluation and OG role distribution",
+        totalEscrow: `${newCampaignEscrow} MERIT`,
         topOgLimit: Number(newCampaignOgLimit),
         totalSubmissionsTracked: 0,
         requirements: {
           minWords: Number(newCampaignMinWords),
           requiredMentions: [newCampaignMention],
           requiredHashtags: [newCampaignHashtag],
-          requiredKeywords: ["Precompile"],
+          requiredKeywords: ["AI"],
         }
       };
 
-      setProjects(prev => [...prev, createdItem]);
-      setIsCreatingCampaign(false);
+      setCampaigns(prev => [...prev, createdCampaign]);
+      setIsCreating(false);
       setActiveMode('contributor');
-      alert(`Campaign ${newCampaignName} activated with Top ${newCampaignOgLimit} OG Roles`);
+      setContributorTab('campaigns');
+      alert(`Campaign ${newCampaignName} activated with Top ${newCampaignOgLimit} OG Roles!`);
     }, 1200);
   }
 
-  // Calculate User Profile Statistics
-  const userSubmissions = submissions;
-  const totalUserSubmissions = userSubmissions.length;
+  // Calculate User Profile Statistics Separately
+  const contestSubmissions = submissions.filter(s => s.targetType === 'CONTEST');
+  const campaignSubmissions = submissions.filter(s => s.targetType === 'CAMPAIGN');
+  
+  const totalUserSubmissions = submissions.length;
   const userAvgScore = totalUserSubmissions > 0 
-    ? Math.round(userSubmissions.reduce((acc, curr) => acc + curr.finalScore, 0) / totalUserSubmissions) 
+    ? Math.round(submissions.reduce((acc, curr) => acc + curr.finalScore, 0) / totalUserSubmissions) 
     : 0;
 
   return (
@@ -318,7 +392,7 @@ export default function DashboardApp() {
               <span>My Profile & History ({totalUserSubmissions})</span>
             </button>
 
-            {/* Minimal Mode Toggle */}
+            {/* Mode Switcher */}
             <div className="flex items-center bg-[#040705] border border-[#00E575]/40 p-1">
               <button
                 onClick={() => setActiveMode('contributor')}
@@ -375,232 +449,367 @@ export default function DashboardApp() {
           <div className="space-y-8">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#00E575]/20 pb-6">
               <div>
-                <h1 className="text-3xl font-black text-white uppercase tracking-tight">Active Contests and Campaigns</h1>
+                <h1 className="text-3xl font-black text-white uppercase tracking-tight">Ecosystem Contests and Project Campaigns</h1>
                 <p className="text-xs font-mono text-slate-400 mt-1">
-                  Select any contest or project campaign below to submit your post link and discord handle or inspect live rankings
+                  Select Contests or Project Campaigns to submit post links and sign transactions on Ritual Testnet
                 </p>
               </div>
+
+              {/* SEPARATE TAB SWITCHER FOR CONTRIBUTOR */}
+              <div className="flex items-center bg-[#07110c] border border-[#00E575]/40 p-1 font-mono text-xs">
+                <button
+                  onClick={() => setContributorTab('contests')}
+                  className={`px-5 py-2.5 font-bold uppercase transition-all flex items-center gap-2 ${
+                    contributorTab === 'contests' 
+                      ? 'bg-[#00E575] text-[#040705]' 
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Trophy className="w-4 h-4" />
+                  <span>Contests ({contests.length})</span>
+                </button>
+
+                <button
+                  onClick={() => setContributorTab('campaigns')}
+                  className={`px-5 py-2.5 font-bold uppercase transition-all flex items-center gap-2 ${
+                    contributorTab === 'campaigns' 
+                      ? 'bg-[#00E575] text-[#040705]' 
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <FolderPlus className="w-4 h-4" />
+                  <span>Project Campaigns ({campaigns.length})</span>
+                </button>
+              </div>
             </div>
 
-            {/* 2 HORIZONTAL COLUMNS */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              
-              {/* COLUMN 1: ONE-OFF CONTESTS */}
-              <div className="glass-card-sharp p-6 space-y-6 border-t-4 border-t-[#00E575]">
-                <div className="flex items-center justify-between border-b border-[#00E575]/20 pb-4 font-mono">
-                  <div className="flex items-center gap-2">
-                    <Trophy className="w-5 h-5 text-[#00E575]" />
-                    <h2 className="font-black text-white text-lg uppercase">Contest</h2>
-                  </div>
-                  <span className="text-[11px] text-[#00E575] font-bold bg-[#00E575]/10 px-2.5 py-1 border border-[#00E575]/30">
-                    SINGLE ENTRY PER USER
-                  </span>
+            {/* TAB 1: CONTESTS SECTION */}
+            {contributorTab === 'contests' && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between font-mono text-xs text-slate-400 border-l-2 border-[#00E575] pl-3">
+                  <span>ONE-OFF COMPETITIONS WITH PRIZE POOL ESCROW AND WINNER RANKINGS</span>
+                  <span className="text-[#00E575] font-bold">{contests.length} ACTIVE CONTESTS</span>
                 </div>
 
-                <div className="space-y-4">
-                  {contestList.map(c => (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {contests.map(c => (
                     <div 
                       key={c.id}
-                      onClick={() => { setActiveModalItem(c); setModalTab('submit'); setSubmissionUrl(''); setDiscordHandle(''); setTxHash(null); }}
-                      className="p-6 bg-[#040705] border border-[#00E575]/30 hover:border-[#00E575] transition-all cursor-pointer group space-y-3 hover:bg-[#07110c]"
+                      onClick={() => { 
+                        setActiveModalItem({ type: 'CONTEST', item: c }); 
+                        setModalTab('submit'); 
+                        setSubmissionUrl(''); 
+                        setDiscordHandle(''); 
+                        setTxHash(null); 
+                      }}
+                      className="glass-card-sharp p-6 space-y-4 border-t-4 border-t-[#00E575] hover:border-[#00E575] transition-all cursor-pointer group bg-[#040705]"
                     >
                       <div className="flex justify-between items-center font-mono text-xs">
-                        <span className="text-[#00E575] font-bold">CONTEST #{c.id}</span>
+                        <span className="text-[#00E575] font-bold flex items-center gap-1.5">
+                          <Trophy className="w-4 h-4 text-[#00E575]" />
+                          <span>CONTEST #{c.id}</span>
+                        </span>
                         <span className="text-white font-black font-mono px-3 py-1 bg-[#00E575]/15 border border-[#00E575]/40">
-                          {c.totalEscrow} MERIT ESCROW
+                          {c.totalPrizeEscrow} ESCROW
                         </span>
                       </div>
-                      <h3 className="font-extrabold text-white text-lg group-hover:text-[#00E575] transition-colors">{c.name}</h3>
+
+                      <h3 className="font-extrabold text-white text-xl group-hover:text-[#00E575] transition-colors">{c.title}</h3>
                       <p className="text-xs text-slate-400 leading-relaxed">{c.description}</p>
                       
-                      <div className="pt-3 border-t border-[#00E575]/20 flex items-center justify-between text-xs font-mono text-slate-300">
+                      <div className="pt-3 border-t border-[#00E575]/20 flex items-center justify-between text-xs font-mono">
                         <span className="text-[#00E575] font-bold flex items-center gap-1">
-                          <Crown className="w-3.5 h-3.5 text-[#00E575]" /> Top {c.topOgLimit} Earn OG Role
+                          <Crown className="w-3.5 h-3.5 text-[#00E575]" /> Top {c.topWinnersLimit} Winners Earn Rewards
                         </span>
                         <span className="group-hover:translate-x-1 transition-transform text-white font-bold flex items-center gap-1">
-                          <span>Participate Now</span> ➔
+                          <span>Submit Post Link</span> ➔
                         </span>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
+            )}
 
-              {/* COLUMN 2: CONTINUOUS PROJECT CAMPAIGNS */}
-              <div className="glass-card-sharp p-6 space-y-6 border-t-4 border-t-emerald-400">
-                <div className="flex items-center justify-between border-b border-[#00E575]/20 pb-4 font-mono">
-                  <div className="flex items-center gap-2">
-                    <FolderPlus className="w-5 h-5 text-emerald-400" />
-                    <h2 className="font-black text-white text-lg uppercase">Project Campaign</h2>
-                  </div>
-                  <span className="text-[11px] text-emerald-400 font-bold bg-emerald-500/10 px-2.5 py-1 border border-emerald-500/30">
-                    CONTINUOUS POST TRACKING
-                  </span>
+            {/* TAB 2: PROJECT CAMPAIGNS SECTION */}
+            {contributorTab === 'campaigns' && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between font-mono text-xs text-slate-400 border-l-2 border-emerald-400 pl-3">
+                  <span>CONTINUOUS CREATOR SPACES WITH MONTHLY OG ROLE ALLOCATION</span>
+                  <span className="text-emerald-400 font-bold">{campaigns.length} ACTIVE CAMPAIGNS</span>
                 </div>
 
-                <div className="space-y-4">
-                  {campaignList.map(p => (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {campaigns.map(p => (
                     <div 
                       key={p.id}
-                      onClick={() => { setActiveModalItem(p); setModalTab('submit'); setSubmissionUrl(''); setDiscordHandle(''); setTxHash(null); }}
-                      className="p-6 bg-[#040705] border border-[#00E575]/30 hover:border-[#00E575] transition-all cursor-pointer group space-y-3 hover:bg-[#07110c]"
+                      onClick={() => { 
+                        setActiveModalItem({ type: 'CAMPAIGN', item: p }); 
+                        setModalTab('submit'); 
+                        setSubmissionUrl(''); 
+                        setDiscordHandle(''); 
+                        setTxHash(null); 
+                      }}
+                      className="glass-card-sharp p-6 space-y-4 border-t-4 border-t-emerald-400 hover:border-emerald-400 transition-all cursor-pointer group bg-[#040705]"
                     >
                       <div className="flex justify-between items-center font-mono text-xs">
-                        <span className="text-emerald-400 font-bold flex items-center gap-1">
-                          <Crown className="w-3.5 h-3.5 text-emerald-400" /> TOP {p.topOgLimit} GET OG ROLE ({p.frequency})
+                        <span className="text-emerald-400 font-bold flex items-center gap-1.5">
+                          <FolderPlus className="w-4 h-4 text-emerald-400" />
+                          <span>CAMPAIGN #{p.id} ({p.frequency})</span>
                         </span>
-                        <span className="text-white font-black font-mono px-3 py-1 bg-[#00E575]/15 border border-[#00E575]/40">
-                          {p.totalEscrow} MERIT ESCROW
+                        <span className="text-white font-black font-mono px-3 py-1 bg-emerald-500/15 border border-emerald-500/40">
+                          {p.totalEscrow} ESCROW
                         </span>
                       </div>
-                      <h3 className="font-extrabold text-white text-lg group-hover:text-[#00E575] transition-colors">{p.name}</h3>
+
+                      <h3 className="font-extrabold text-white text-xl group-hover:text-emerald-400 transition-colors">{p.name}</h3>
                       <p className="text-xs text-slate-400 leading-relaxed">{p.description}</p>
                       
-                      <div className="pt-3 border-t border-[#00E575]/20 flex items-center justify-between text-xs font-mono text-slate-300">
-                        <span className="text-slate-400">Tracked Submissions: <strong className="text-white">{p.totalSubmissionsTracked} Posts</strong></span>
+                      <div className="pt-3 border-t border-[#00E575]/20 flex items-center justify-between text-xs font-mono">
+                        <span className="text-emerald-400 font-bold flex items-center gap-1">
+                          <Crown className="w-3.5 h-3.5 text-emerald-400" /> Top {p.topOgLimit} Earn OG Roles
+                        </span>
                         <span className="group-hover:translate-x-1 transition-transform text-white font-bold flex items-center gap-1">
-                          <span>Participate Now</span> ➔
+                          <span>Submit Post Link</span> ➔
                         </span>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
+            )}
 
-            </div>
           </div>
         )}
 
-        {/* MODE 2: PROJECT OWNER WORKSPACE */}
+        {/* MODE 2: PROJECT OWNER WORKSPACE (SEPARATED CREATION FORMS) */}
         {activeMode === 'owner' && (
           <div className="glass-card-sharp p-8 space-y-6 max-w-3xl mx-auto border-2 border-[#00E575]">
-            <div className="border-b border-[#00E575]/20 pb-4">
-              <h2 className="text-2xl font-black text-white font-sans uppercase tracking-tight mb-1">
-                Open New Contest or Project Campaign
-              </h2>
-              <p className="text-xs font-mono text-slate-400">
-                Configure prize escrow pool select cycle frequency and set mandatory tag criteria
-              </p>
+            <div className="flex items-center justify-between border-b border-[#00E575]/20 pb-4">
+              <div>
+                <span className="text-xs text-[#00E575] font-mono font-bold block mb-1">PROJECT OWNER DASHBOARD</span>
+                <h2 className="text-2xl font-black text-white font-sans uppercase tracking-tight">
+                  Launch Contest or Project Campaign
+                </h2>
+              </div>
+
+              {/* OWNER FORM TAB SWITCHER */}
+              <div className="flex items-center bg-[#040705] border border-[#00E575]/40 p-1 font-mono text-xs">
+                <button
+                  onClick={() => setOwnerFormTab('create_contest')}
+                  className={`px-4 py-2 font-bold uppercase transition-all ${
+                    ownerFormTab === 'create_contest' 
+                      ? 'bg-[#00E575] text-[#040705]' 
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Create Contest
+                </button>
+                <button
+                  onClick={() => setOwnerFormTab('create_campaign')}
+                  className={`px-4 py-2 font-bold uppercase transition-all ${
+                    ownerFormTab === 'create_campaign' 
+                      ? 'bg-[#00E575] text-[#040705]' 
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Create Campaign
+                </button>
+              </div>
             </div>
 
-            <form onSubmit={handleCreateCampaign} className="space-y-6 font-mono text-xs">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* FORM 1: CREATE CONTEST */}
+            {ownerFormTab === 'create_contest' && (
+              <form onSubmit={handleCreateContest} className="space-y-6 font-mono text-xs">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-slate-300 mb-2 uppercase font-bold">CONTEST TITLE</label>
+                    <input
+                      type="text"
+                      required
+                      value={newContestTitle}
+                      onChange={(e) => setNewContestTitle(e.target.value)}
+                      placeholder="Ritual AI Precompile Hackathon Contest"
+                      className="w-full bg-[#040705] border border-[#00E575]/40 px-4 py-3.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-[#00E575]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-300 mb-2 uppercase font-bold">PRIZE ESCROW (MERIT)</label>
+                    <input
+                      type="number"
+                      value={newContestPrize}
+                      onChange={(e) => setNewContestPrize(e.target.value)}
+                      className="w-full bg-[#040705] border border-[#00E575]/40 px-4 py-3.5 text-xs text-white"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-slate-300 mb-2 uppercase font-bold">TOTAL WINNERS LIMIT</label>
+                    <input
+                      type="number"
+                      value={newContestWinners}
+                      onChange={(e) => setNewContestWinners(e.target.value)}
+                      className="w-full bg-[#040705] border border-[#00E575]/40 px-4 py-3.5 text-xs text-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-300 mb-2 uppercase font-bold">MIN WORD COUNT</label>
+                    <input
+                      type="number"
+                      value={newContestMinWords}
+                      onChange={(e) => setNewContestMinWords(e.target.value)}
+                      className="w-full bg-[#040705] border border-[#00E575]/40 px-4 py-3.5 text-xs text-white"
+                    />
+                  </div>
+                </div>
+
                 <div>
-                  <label className="block text-slate-300 mb-2 uppercase font-bold">CAMPAIGN NAME</label>
-                  <input
-                    type="text"
-                    required
-                    value={newCampaignName}
-                    onChange={(e) => setNewCampaignName(e.target.value)}
-                    placeholder="Ritual AI Hackathon Campaign"
+                  <label className="block text-slate-300 mb-2 uppercase font-bold">CONTEST DESCRIPTION AND AI RUBRIC</label>
+                  <textarea
+                    rows={3}
+                    value={newContestDesc}
+                    onChange={(e) => setNewContestDesc(e.target.value)}
+                    placeholder="Describe contest evaluation rubric and specific criteria"
                     className="w-full bg-[#040705] border border-[#00E575]/40 px-4 py-3.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-[#00E575]"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-slate-300 mb-2 uppercase font-bold">TYPE</label>
-                  <select
-                    value={newCampaignType}
-                    onChange={(e: any) => setNewCampaignType(e.target.value)}
-                    className="w-full bg-[#040705] border border-[#00E575]/40 px-4 py-3.5 text-xs text-white focus:outline-none focus:border-[#00E575]"
-                  >
-                    <option value="PROJECT_CAMPAIGN">Project Campaign</option>
-                    <option value="CONTEST">Contest</option>
-                  </select>
-                </div>
-              </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-slate-300 mb-2 uppercase font-bold">REQUIRED @MENTION</label>
+                    <input
+                      type="text"
+                      value={newContestMention}
+                      onChange={(e) => setNewContestMention(e.target.value)}
+                      className="w-full bg-[#040705] border border-[#00E575]/40 px-4 py-3.5 text-xs text-white"
+                    />
+                  </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div>
-                  <label className="block text-slate-300 mb-2 uppercase font-bold">CYCLE FREQUENCY</label>
-                  <select
-                    value={newCampaignFreq}
-                    onChange={(e: any) => setNewCampaignFreq(e.target.value)}
-                    className="w-full bg-[#040705] border border-[#00E575]/40 px-4 py-3.5 text-xs text-white focus:outline-none focus:border-[#00E575]"
-                  >
-                    <option value="MONTHLY">Monthly</option>
-                    <option value="WEEKLY">Weekly</option>
-                  </select>
+                  <div>
+                    <label className="block text-slate-300 mb-2 uppercase font-bold">REQUIRED #HASHTAG</label>
+                    <input
+                      type="text"
+                      value={newContestHashtag}
+                      onChange={(e) => setNewContestHashtag(e.target.value)}
+                      className="w-full bg-[#040705] border border-[#00E575]/40 px-4 py-3.5 text-xs text-white"
+                    />
+                  </div>
                 </div>
 
+                <button
+                  type="submit"
+                  disabled={isCreating}
+                  className="btn-ritual-sharp w-full h-14 text-xs font-mono uppercase tracking-wider font-bold"
+                >
+                  {isCreating ? "Deploying Contest to Chain..." : "Deploy Contest & Lock Prize Pool Escrow"}
+                </button>
+              </form>
+            )}
+
+            {/* FORM 2: CREATE PROJECT CAMPAIGN */}
+            {ownerFormTab === 'create_campaign' && (
+              <form onSubmit={handleCreateCampaign} className="space-y-6 font-mono text-xs">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-slate-300 mb-2 uppercase font-bold">CAMPAIGN NAME</label>
+                    <input
+                      type="text"
+                      required
+                      value={newCampaignName}
+                      onChange={(e) => setNewCampaignName(e.target.value)}
+                      placeholder="Ritual Ecosystem Project Space"
+                      className="w-full bg-[#040705] border border-[#00E575]/40 px-4 py-3.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-[#00E575]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-300 mb-2 uppercase font-bold">CYCLE FREQUENCY</label>
+                    <select
+                      value={newCampaignFreq}
+                      onChange={(e: any) => setNewCampaignFreq(e.target.value)}
+                      className="w-full bg-[#040705] border border-[#00E575]/40 px-4 py-3.5 text-xs text-white focus:outline-none focus:border-[#00E575]"
+                    >
+                      <option value="MONTHLY">Monthly</option>
+                      <option value="WEEKLY">Weekly</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-slate-300 mb-2 uppercase font-bold">TOP OG ROLE LIMIT</label>
+                    <input
+                      type="number"
+                      value={newCampaignOgLimit}
+                      onChange={(e) => setNewCampaignOgLimit(e.target.value)}
+                      className="w-full bg-[#040705] border border-[#00E575]/40 px-4 py-3.5 text-xs text-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-300 mb-2 uppercase font-bold">ESCROW POOL (MERIT)</label>
+                    <input
+                      type="number"
+                      value={newCampaignEscrow}
+                      onChange={(e) => setNewCampaignEscrow(e.target.value)}
+                      className="w-full bg-[#040705] border border-[#00E575]/40 px-4 py-3.5 text-xs text-white"
+                    />
+                  </div>
+                </div>
+
                 <div>
-                  <label className="block text-slate-300 mb-2 uppercase font-bold">OG ROLES</label>
-                  <input
-                    type="number"
-                    value={newCampaignOgLimit}
-                    onChange={(e) => setNewCampaignOgLimit(e.target.value)}
-                    className="w-full bg-[#040705] border border-[#00E575]/40 px-4 py-3.5 text-xs text-white"
+                  <label className="block text-slate-300 mb-2 uppercase font-bold">CAMPAIGN DESCRIPTION AND RUBRIC</label>
+                  <textarea
+                    rows={3}
+                    value={newCampaignDesc}
+                    onChange={(e) => setNewCampaignDesc(e.target.value)}
+                    placeholder="Describe continuous campaign guidelines and quality criteria"
+                    className="w-full bg-[#040705] border border-[#00E575]/40 px-4 py-3.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-[#00E575]"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-slate-300 mb-2 uppercase font-bold">ESCROW PRIZE MERIT</label>
-                  <input
-                    type="number"
-                    value={newCampaignEscrow}
-                    onChange={(e) => setNewCampaignEscrow(e.target.value)}
-                    className="w-full bg-[#040705] border border-[#00E575]/40 px-4 py-3.5 text-xs text-white"
-                  />
-                </div>
-              </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-slate-300 mb-2 uppercase font-bold">REQUIRED @MENTION</label>
+                    <input
+                      type="text"
+                      value={newCampaignMention}
+                      onChange={(e) => setNewCampaignMention(e.target.value)}
+                      className="w-full bg-[#040705] border border-[#00E575]/40 px-4 py-3.5 text-xs text-white"
+                    />
+                  </div>
 
-              <div>
-                <label className="block text-slate-300 mb-2 uppercase font-bold">DESCRIPTION AND RUBRIC</label>
-                <textarea
-                  rows={3}
-                  value={newCampaignDesc}
-                  onChange={(e) => setNewCampaignDesc(e.target.value)}
-                  placeholder="Describe campaign evaluation criteria"
-                  className="w-full bg-[#040705] border border-[#00E575]/40 px-4 py-3.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-[#00E575]"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div>
-                  <label className="block text-slate-300 mb-2 uppercase font-bold">REQUIRED @MENTION</label>
-                  <input
-                    type="text"
-                    value={newCampaignMention}
-                    onChange={(e) => setNewCampaignMention(e.target.value)}
-                    className="w-full bg-[#040705] border border-[#00E575]/40 px-4 py-3.5 text-xs text-white"
-                  />
+                  <div>
+                    <label className="block text-slate-300 mb-2 uppercase font-bold">REQUIRED #HASHTAG</label>
+                    <input
+                      type="text"
+                      value={newCampaignHashtag}
+                      onChange={(e) => setNewCampaignHashtag(e.target.value)}
+                      className="w-full bg-[#040705] border border-[#00E575]/40 px-4 py-3.5 text-xs text-white"
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block text-slate-300 mb-2 uppercase font-bold">REQUIRED #HASHTAG</label>
-                  <input
-                    type="text"
-                    value={newCampaignHashtag}
-                    onChange={(e) => setNewCampaignHashtag(e.target.value)}
-                    className="w-full bg-[#040705] border border-[#00E575]/40 px-4 py-3.5 text-xs text-white"
-                  />
-                </div>
+                <button
+                  type="submit"
+                  disabled={isCreating}
+                  className="btn-ritual-sharp w-full h-14 text-xs font-mono uppercase tracking-wider font-bold"
+                >
+                  {isCreating ? "Activating Campaign Space..." : "Activate Project Campaign & Lock Escrow"}
+                </button>
+              </form>
+            )}
 
-                <div>
-                  <label className="block text-slate-300 mb-2 uppercase font-bold">MIN WORD COUNT</label>
-                  <input
-                    type="number"
-                    value={newCampaignMinWords}
-                    onChange={(e) => setNewCampaignMinWords(e.target.value)}
-                    className="w-full bg-[#040705] border border-[#00E575]/40 px-4 py-3.5 text-xs text-white"
-                  />
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={isCreatingCampaign}
-                className="btn-ritual-sharp w-full h-14 text-xs font-mono uppercase tracking-wider font-bold"
-              >
-                {isCreatingCampaign ? "Saving and Locking Escrow" : "Activate Campaign and Lock Escrow Prize"}
-              </button>
-            </form>
           </div>
         )}
 
       </main>
 
-      {/* USER PROFILE AND SUBMISSION HISTORY MODAL */}
+      {/* USER PROFILE AND SUBMISSION HISTORY MODAL (SEPARATED HISTORY TAB LOGS) */}
       {showProfileModal && (
         <div className="fixed inset-0 z-50 bg-[#040705]/95 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 font-mono">
           <div className="max-w-4xl w-full glass-card-sharp p-6 space-y-6 border-2 border-[#00E575] max-h-[90vh] overflow-y-auto">
@@ -622,94 +831,151 @@ export default function DashboardApp() {
             {/* Profile Overview Stats */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 font-mono text-xs">
               <div className="bg-[#07110c] border border-[#00E575]/30 p-4 space-y-1">
-                <span className="text-slate-400 text-[11px] block uppercase">Total Posts Submitted</span>
-                <span className="text-2xl font-black text-white">{totalUserSubmissions}</span>
+                <span className="text-slate-400 text-[11px] block uppercase">Contest Submissions</span>
+                <span className="text-2xl font-black text-[#00E575]">{contestSubmissions.length} Posts</span>
+              </div>
+              <div className="bg-[#07110c] border border-[#00E575]/30 p-4 space-y-1">
+                <span className="text-slate-400 text-[11px] block uppercase">Campaign Submissions</span>
+                <span className="text-2xl font-black text-emerald-400">{campaignSubmissions.length} Posts</span>
               </div>
               <div className="bg-[#07110c] border border-[#00E575]/30 p-4 space-y-1">
                 <span className="text-slate-400 text-[11px] block uppercase">Average Quality Score</span>
-                <span className="text-2xl font-black text-[#00E575]">{userAvgScore} / 100</span>
-              </div>
-              <div className="bg-[#07110c] border border-[#00E575]/30 p-4 space-y-1">
-                <span className="text-slate-400 text-[11px] block uppercase">Active Campaigns</span>
-                <span className="text-2xl font-black text-white">{projects.length}</span>
+                <span className="text-2xl font-black text-white">{userAvgScore} / 100</span>
               </div>
             </div>
 
-            {/* Submissions Breakdown per Campaign */}
-            <div className="space-y-3">
-              <h3 className="font-bold text-white uppercase text-sm font-sans border-b border-[#00E575]/20 pb-2">
-                Submissions Breakdown by Campaign
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 font-mono text-xs">
-                {projects.map(p => {
-                  const countForProj = submissions.filter(s => s.projectId === p.id).length;
-                  return (
-                    <div key={p.id} className="p-3 bg-[#040705] border border-[#00E575]/30 flex items-center justify-between">
-                      <span className="text-slate-200 font-bold truncate pr-2">{p.name}</span>
-                      <span className="text-[#00E575] font-black px-2 py-0.5 bg-[#00E575]/10 border border-[#00E575]/30 shrink-0">
-                        {countForProj} Posts
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+            {/* PROFILE HISTORY SUBMISSION SWITCHER */}
+            <div className="space-y-4 pt-2">
+              <div className="flex items-center justify-between border-b border-[#00E575]/20 pb-2">
+                <h3 className="font-bold text-white uppercase text-sm font-sans">
+                  Submission History Logs
+                </h3>
 
-            {/* Detailed Submission History Table with AI Score Breakdown & Reasons */}
-            <div className="space-y-3 pt-2">
-              <h3 className="font-bold text-white uppercase text-sm font-sans border-b border-[#00E575]/20 pb-2">
-                Full Submission Log and AI Evaluation Reasons
-              </h3>
-
-              {submissions.length === 0 ? (
-                <div className="p-8 text-center bg-[#07110c] border border-[#00E575]/30 text-slate-400 font-mono text-xs">
-                  No submissions filed yet. Select a Contest or Project Campaign to submit your X post link.
+                <div className="flex items-center bg-[#040705] border border-[#00E575]/40 p-1 font-mono text-xs">
+                  <button
+                    onClick={() => setProfileHistoryTab('contests')}
+                    className={`px-3 py-1.5 font-bold uppercase transition-all ${
+                      profileHistoryTab === 'contests' 
+                        ? 'bg-[#00E575] text-[#040705]' 
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Contest Submissions ({contestSubmissions.length})
+                  </button>
+                  <button
+                    onClick={() => setProfileHistoryTab('campaigns')}
+                    className={`px-3 py-1.5 font-bold uppercase transition-all ${
+                      profileHistoryTab === 'campaigns' 
+                        ? 'bg-[#00E575] text-[#040705]' 
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Campaign Submissions ({campaignSubmissions.length})
+                  </button>
                 </div>
-              ) : (
-                <div className="space-y-4">
-                  {submissions.map((sub, idx) => (
-                    <div key={idx} className="p-4 bg-[#040705] border border-[#00E575]/30 space-y-3 font-mono text-xs">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#00E575]/20 pb-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[#00E575] font-bold">ENTRY #{sub.id}</span>
-                          <span className="text-slate-400 font-bold">• {sub.discordHandle}</span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <a
-                            href={sub.contentUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-[#00E575] underline font-bold"
-                          >
-                            View X Post Link
-                          </a>
-                          <span className={`px-2 py-0.5 font-bold border ${
-                            sub.finalScore >= 80 
-                              ? 'bg-[#00E575]/20 text-[#00E575] border-[#00E575]' 
-                              : 'bg-red-500/20 text-red-400 border-red-500'
-                          }`}>
-                            Score {sub.finalScore} / 100
-                          </span>
-                        </div>
-                      </div>
+              </div>
 
-                      {/* AI Evaluation Reason - Clean Feedback Only */}
-                      {sub.failureReason && (
-                        <div className="bg-[#07110c] p-3 border border-[#00E575]/30 text-slate-300 leading-relaxed text-[11px] whitespace-pre-wrap">
-                          {sub.failureReason.replace(/\n\nFetched Content Preview:[\s\S]*/g, '').replace(/Fetched Content Preview:[\s\S]*/g, '')}
-                        </div>
-                      )}
+              {/* CONTEST SUBMISSIONS LOG */}
+              {profileHistoryTab === 'contests' && (
+                <div>
+                  {contestSubmissions.length === 0 ? (
+                    <div className="p-8 text-center bg-[#07110c] border border-[#00E575]/30 text-slate-400 font-mono text-xs">
+                      No contest entries filed yet. Go to Contests Hub to submit post links.
                     </div>
-                  ))}
+                  ) : (
+                    <div className="space-y-4">
+                      {contestSubmissions.map((sub, idx) => (
+                        <div key={idx} className="p-4 bg-[#040705] border border-[#00E575]/30 space-y-3 font-mono text-xs">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#00E575]/20 pb-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[#00E575] font-bold">CONTEST ENTRY #{sub.id}</span>
+                              <span className="text-slate-400 font-bold">• {sub.discordHandle}</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <a
+                                href={sub.contentUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-[#00E575] underline font-bold"
+                              >
+                                View X Post Link
+                              </a>
+                              <span className={`px-2 py-0.5 font-bold border ${
+                                sub.finalScore >= 80 
+                                  ? 'bg-[#00E575]/20 text-[#00E575] border-[#00E575]' 
+                                  : 'bg-red-500/20 text-red-400 border-red-500'
+                              }`}>
+                                Score {sub.finalScore} / 100
+                              </span>
+                            </div>
+                          </div>
+
+                          {sub.failureReason && (
+                            <div className="bg-[#07110c] p-3 border border-[#00E575]/30 text-slate-300 leading-relaxed text-[11px] whitespace-pre-wrap">
+                              {sub.failureReason.replace(/\n\nFetched Content Preview:[\s\S]*/g, '').replace(/Fetched Content Preview:[\s\S]*/g, '')}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
+
+              {/* CAMPAIGN SUBMISSIONS LOG */}
+              {profileHistoryTab === 'campaigns' && (
+                <div>
+                  {campaignSubmissions.length === 0 ? (
+                    <div className="p-8 text-center bg-[#07110c] border border-[#00E575]/30 text-slate-400 font-mono text-xs">
+                      No project campaign submissions logged yet. Go to Project Campaigns Hub to submit post links.
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {campaignSubmissions.map((sub, idx) => (
+                        <div key={idx} className="p-4 bg-[#040705] border border-emerald-500/30 space-y-3 font-mono text-xs">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#00E575]/20 pb-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-emerald-400 font-bold">CAMPAIGN ENTRY #{sub.id}</span>
+                              <span className="text-slate-400 font-bold">• {sub.discordHandle}</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <a
+                                href={sub.contentUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-emerald-400 underline font-bold"
+                              >
+                                View X Post Link
+                              </a>
+                              <span className={`px-2 py-0.5 font-bold border ${
+                                sub.finalScore >= 80 
+                                  ? 'bg-[#00E575]/20 text-[#00E575] border-[#00E575]' 
+                                  : 'bg-red-500/20 text-red-400 border-red-500'
+                              }`}>
+                                Score {sub.finalScore} / 100
+                              </span>
+                            </div>
+                          </div>
+
+                          {sub.failureReason && (
+                            <div className="bg-[#07110c] p-3 border border-[#00E575]/30 text-slate-300 leading-relaxed text-[11px] whitespace-pre-wrap">
+                              {sub.failureReason.replace(/\n\nFetched Content Preview:[\s\S]*/g, '').replace(/Fetched Content Preview:[\s\S]*/g, '')}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
             </div>
 
           </div>
         </div>
       )}
 
-      {/* UNIFIED ITEM MODAL */}
+      {/* ITEM MODAL (DYNAMIC FOR CONTEST OR CAMPAIGN) */}
       {activeModalItem && (
         <div className="fixed inset-0 z-50 bg-[#040705]/90 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 font-mono">
           <div className="max-w-3xl w-full glass-card-sharp p-6 space-y-6 border-2 border-[#00E575] max-h-[90vh] overflow-y-auto">
@@ -718,10 +984,12 @@ export default function DashboardApp() {
             <div className="flex items-start justify-between border-b border-[#00E575]/20 pb-4">
               <div>
                 <span className="text-xs text-[#00E575] font-bold block mb-1">
-                  {activeModalItem.type === 'CONTEST' ? 'CONTEST' : 'PROJECT CAMPAIGN'} {activeModalItem.category}
+                  {activeModalItem.type === 'CONTEST' ? 'CONTEST' : 'PROJECT CAMPAIGN'} • {activeModalItem.item.category}
                 </span>
-                <h2 className="text-2xl font-black text-white uppercase">{activeModalItem.name}</h2>
-                <p className="text-xs text-slate-400 mt-1">{activeModalItem.description}</p>
+                <h2 className="text-2xl font-black text-white uppercase">
+                  {activeModalItem.type === 'CONTEST' ? (activeModalItem.item as ContestData).title : (activeModalItem.item as CampaignData).name}
+                </h2>
+                <p className="text-xs text-slate-400 mt-1">{activeModalItem.item.description}</p>
               </div>
 
               <button
@@ -798,7 +1066,7 @@ export default function DashboardApp() {
                     className="btn-ritual-sharp h-13 px-8 text-xs font-mono uppercase tracking-wider flex items-center justify-center gap-2 font-bold w-full"
                   >
                     <Send className="w-4 h-4" />
-                    <span>{isSubmitting ? "Signing and Submitting to Chain" : `Sign Wallet and Submit Entry to ${activeModalItem.name}`}</span>
+                    <span>{isSubmitting ? "Signing and Submitting to Chain" : `Sign Wallet and Submit Entry`}</span>
                   </button>
                 </form>
 
@@ -838,9 +1106,9 @@ export default function DashboardApp() {
             {modalTab === 'leaderboard' && (
               <div className="space-y-4">
                 <div className="overflow-x-auto">
-                  {leaderboard.length === 0 ? (
+                  {leaderboard.filter(l => l.targetId === activeModalItem.item.id).length === 0 ? (
                     <div className="p-8 text-center bg-[#07110c] border border-[#00E575]/30 text-slate-400 font-mono text-xs">
-                      No submissions logged yet. Submit your X post link to rank on the leaderboard.
+                      No submissions logged yet for this item. Submit your X post link to rank on the leaderboard.
                     </div>
                   ) : (
                     <table className="w-full text-left border-collapse font-mono text-xs">
@@ -851,11 +1119,11 @@ export default function DashboardApp() {
                           <th className="py-3 px-3 uppercase">WALLET</th>
                           <th className="py-3 px-3 uppercase">X LINK</th>
                           <th className="py-3 px-3 uppercase">AI SCORE</th>
-                          <th className="py-3 px-3 uppercase">OG STATUS</th>
+                          <th className="py-3 px-3 uppercase">STATUS</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[#00E575]/15 text-xs">
-                        {leaderboard.map((item, idx) => (
+                        {leaderboard.filter(l => l.targetId === activeModalItem.item.id).map((item, idx) => (
                           <tr key={idx} className={`hover:bg-[#00E575]/10 transition-colors ${item.isOgWinner ? 'bg-[#00E575]/5' : ''}`}>
                             <td className="py-3 px-3 font-bold text-[#00E575]">#{idx + 1}</td>
                             <td className="py-3 px-3 font-bold text-white flex items-center gap-1.5">
@@ -878,7 +1146,7 @@ export default function DashboardApp() {
                             <td className="py-3 px-3">
                               {item.isOgWinner ? (
                                 <span className="px-2 py-0.5 bg-[#00E575] text-[#040705] font-black text-[10px] uppercase border border-[#00E575] flex items-center gap-1 w-max">
-                                  <Crown className="w-3 h-3" /> OG QUALIFIED
+                                  <Crown className="w-3 h-3" /> {activeModalItem.type === 'CONTEST' ? 'WINNER QUALIFIED' : 'OG QUALIFIED'}
                                 </span>
                               ) : (
                                 <span className="text-slate-500 text-[11px]">CONTRIBUTOR</span>

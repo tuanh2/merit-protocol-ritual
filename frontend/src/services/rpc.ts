@@ -119,10 +119,26 @@ export const ERC20_ABI = [
   }
 ] as const;
 
-export interface ProjectCampaignData {
+// DISTINCT DATA ARCHITECTURE: SEPARATE CONTEST & CAMPAIGN DATA STRUCTURES
+export interface ContestData {
+  id: number;
+  title: string;
+  category: string;
+  description: string;
+  totalPrizeEscrow: string;
+  topWinnersLimit: number;
+  totalSubmissions: number;
+  requirements: {
+    minWords: number;
+    requiredMentions: string[];
+    requiredHashtags: string[];
+    requiredKeywords: string[];
+  };
+}
+
+export interface CampaignData {
   id: number;
   name: string;
-  type: 'CONTEST' | 'PROJECT_CAMPAIGN';
   frequency: 'WEEKLY' | 'MONTHLY';
   category: string;
   description: string;
@@ -139,8 +155,9 @@ export interface ProjectCampaignData {
 
 export interface SubmissionData {
   id: number;
-  contestId?: number;
-  projectId: number;
+  targetType?: 'CONTEST' | 'CAMPAIGN';
+  targetId?: number;
+  projectId?: number;
   submitter: string;
   discordHandle: string;
   submissionBlock: number;
@@ -156,7 +173,9 @@ export interface SubmissionData {
 
 export interface LeaderboardItem {
   submissionId: number;
-  projectId: number;
+  targetType?: 'CONTEST' | 'CAMPAIGN';
+  targetId?: number;
+  projectId?: number;
   submitter: string;
   discordHandle: string;
   contentUrl: string;
@@ -166,36 +185,33 @@ export interface LeaderboardItem {
   isOgWinner?: boolean;
 }
 
-// EXACTLY 1 CONTEST AND 1 PROJECT CAMPAIGN SHOWCASE
-export const SHOWCASE_PROJECTS: ProjectCampaignData[] = [
-  // COLUMN 1: EXACTLY 1 CONTEST
+// DEDICATED SHOWCASE DATASETS
+export const SHOWCASE_CONTESTS: ContestData[] = [
   {
     id: 1,
-    name: "Ritual AI Precompile Contest",
-    type: "CONTEST",
-    frequency: "WEEKLY",
+    title: "Ritual AI Precompile Contest",
     category: "Contest",
     description: "Submit 1 educational post explaining Ritual AI Precompiles (0x0801 HTTP & 0x0802 LLM) on Ritual Testnet.",
-    totalEscrow: "1000",
-    topOgLimit: 3,
-    totalSubmissionsTracked: 0,
+    totalPrizeEscrow: "1000 MERIT",
+    topWinnersLimit: 3,
+    totalSubmissions: 0,
     requirements: {
       minWords: 50,
       requiredMentions: ["@Ritual"],
       requiredHashtags: ["#RitualTestnet"],
       requiredKeywords: ["Precompile"],
     }
-  },
+  }
+];
 
-  // COLUMN 2: EXACTLY 1 PROJECT CAMPAIGN
+export const SHOWCASE_CAMPAIGNS: CampaignData[] = [
   {
-    id: 2,
+    id: 1,
     name: "Ritual Network Project Campaign",
-    type: "PROJECT_CAMPAIGN",
     frequency: "MONTHLY",
     category: "Project Campaign",
     description: "Continuous project space tracking all creator submissions. Top contributors earn Monthly OG Role.",
-    totalEscrow: "5000",
+    totalEscrow: "5000 MERIT",
     topOgLimit: 4,
     totalSubmissionsTracked: 0,
     requirements: {
@@ -207,7 +223,6 @@ export const SHOWCASE_PROJECTS: ProjectCampaignData[] = [
   }
 ];
 
-// ZERO MOCK SUBMISSIONS
 export const SHOWCASE_LEADERBOARD: LeaderboardItem[] = [];
 export const SHOWCASE_SUBMISSIONS: SubmissionData[] = [];
 
@@ -422,7 +437,7 @@ export async function createContestOnChain(
       title,
       description,
       currentBlock,
-      currentBlock + 50000n,
+      currentBlock + 10000000n,
       addresses.token,
       prizeWei,
       BigInt(winnerCount),
