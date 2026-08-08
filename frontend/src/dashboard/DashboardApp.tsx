@@ -296,11 +296,24 @@ export default function DashboardApp() {
 
     setIsCreating(true);
     setTimeout(() => {
+      let cleanDesc = newContestDesc;
+      let extractedBarem: string[] = [];
+
+      if (newContestDesc.includes('CONFIDENTIAL BAREM RUBRIC')) {
+        const parts = newContestDesc.split(/CONFIDENTIAL BAREM RUBRIC[^\n]*/);
+        cleanDesc = parts[0].trim();
+        if (parts[1]) {
+          extractedBarem = parts[1].split('\n').map(s => s.trim()).filter(Boolean);
+        }
+      }
+
       const createdContest: ContestData = {
         id: contests.length + 1,
+        creatorWallet: account || "0x8B376915e28562eed544e3e3B74a3D063A401662",
         title: newContestTitle,
         category: "Contest",
-        description: newContestDesc || "One-off competition with AI precompile evaluation and prize escrow",
+        description: cleanDesc || "One-off competition with AI precompile evaluation and prize escrow",
+        hiddenBaremCriteria: extractedBarem.length > 0 ? extractedBarem : undefined,
         totalPrizeEscrow: `${newContestPrize} MERIT`,
         topWinnersLimit: Number(newContestWinners),
         totalSubmissions: 0,
@@ -316,7 +329,7 @@ export default function DashboardApp() {
       setIsCreating(false);
       setActiveMode('contributor');
       setContributorTab('contests');
-      alert(`Contest ${newContestTitle} created successfully and locked in escrow!`);
+      alert(`Contest ${newContestTitle} created successfully with confidential Barem criteria locked to your wallet!`);
     }, 1200);
   }
 
@@ -327,12 +340,25 @@ export default function DashboardApp() {
 
     setIsCreating(true);
     setTimeout(() => {
+      let cleanDesc = newCampaignDesc;
+      let extractedBarem: string[] = [];
+
+      if (newCampaignDesc.includes('CONFIDENTIAL BAREM RUBRIC')) {
+        const parts = newCampaignDesc.split(/CONFIDENTIAL BAREM RUBRIC[^\n]*/);
+        cleanDesc = parts[0].trim();
+        if (parts[1]) {
+          extractedBarem = parts[1].split('\n').map(s => s.trim()).filter(Boolean);
+        }
+      }
+
       const createdCampaign: CampaignData = {
         id: campaigns.length + 1,
+        creatorWallet: account || "0x8B376915e28562eed544e3e3B74a3D063A401662",
         name: newCampaignName,
         frequency: newCampaignFreq,
         category: newCampaignCategory,
-        description: newCampaignDesc || "Continuous project space with AI evaluation and OG role distribution",
+        description: cleanDesc || "Continuous project space with AI evaluation and OG role distribution",
+        hiddenBaremCriteria: extractedBarem.length > 0 ? extractedBarem : undefined,
         totalEscrow: `${newCampaignEscrow} MERIT`,
         topOgLimit: Number(newCampaignOgLimit),
         totalSubmissionsTracked: 0,
@@ -348,7 +374,7 @@ export default function DashboardApp() {
       setIsCreating(false);
       setActiveMode('contributor');
       setContributorTab('campaigns');
-      alert(`Campaign ${newCampaignName} activated with Top ${newCampaignOgLimit} OG Roles!`);
+      alert(`Campaign ${newCampaignName} activated with confidential Barem criteria locked to your wallet!`);
     }, 1200);
   }
 
