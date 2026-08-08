@@ -29,7 +29,9 @@ import {
   FolderPlus,
   Settings,
   Crown,
-  Link as LinkIcon
+  Link as LinkIcon,
+  User,
+  MessageSquare
 } from 'lucide-react';
 import { 
   fetchChainStatus, 
@@ -41,16 +43,17 @@ import {
   evaluateSubmissionContent,
   publicClient,
   SHOWCASE_PROJECTS,
-  SHOWCASE_CONTESTS, 
   SHOWCASE_LEADERBOARD, 
   SHOWCASE_SUBMISSIONS,
   ProjectData,
-  ContestData,
   SubmissionData,
   LeaderboardItem
 } from '../services/rpc';
 
 export default function DashboardApp() {
+  // Role Selection: 'owner' (Open Contest / Campaign) OR 'contributor' (Participant)
+  const [userRoleMode, setUserRoleMode] = useState<'owner' | 'contributor' | null>(null);
+
   const [activeTab, setActiveTab] = useState<'projects' | 'console' | 'leaderboard' | 'reputation'>('projects');
   const [account, setAccount] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -66,8 +69,9 @@ export default function DashboardApp() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardItem[]>(SHOWCASE_LEADERBOARD);
   const [submissions, setSubmissions] = useState<SubmissionData[]>(SHOWCASE_SUBMISSIONS);
 
-  // Single Input Submission Form State (Only X Post URL!)
+  // Submission Inputs (X URL + Discord Username)
   const [submissionUrl, setSubmissionUrl] = useState('https://x.com/crypto_builder/status/19824001');
+  const [discordHandle, setDiscordHandle] = useState('builder#1234');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionStatus, setSubmissionStatus] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
@@ -85,9 +89,9 @@ export default function DashboardApp() {
   const [newProjKeyword, setNewProjKeyword] = useState('Precompile');
   const [isCreatingProject, setIsCreatingProject] = useState(false);
 
-  // User Profile
+  // User Profile Stats
   const [userReputation, setUserReputation] = useState(463);
-  const [userRole, setUserRole] = useState('Verified Contributor');
+  const userRole = 'Verified Contributor';
 
   // Load RPC Chain Status
   useEffect(() => {
@@ -123,16 +127,19 @@ export default function DashboardApp() {
     }
   }
 
-  // Handle Project Submission (Auto-Fetches Content Direct from X URL!)
+  // Handle Project Submission (X URL + Discord Username)
   async function handleProjectSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!selectedProject || !submissionUrl) return;
+    if (!selectedProject || !submissionUrl || !discordHandle) {
+      alert("Please enter both your X Post URL and Discord Username.");
+      return;
+    }
 
     setIsSubmitting(true);
     setSubmissionStatus('AWAITING_WALLET_SIGNATURE');
     setTxHash(null);
 
-    // 1. Auto-Fetch Post Content Direct from X URL via Precompile 0x0801 HTTP Fetching Engine
+    // 1. Auto-Fetch Post Content Direct from X URL via Precompile 0x0801 HTTP Engine
     const fetchedText = fetchXPostTextFromUrl(submissionUrl);
 
     // 2. Evaluate Fetched Post Content against Project's Custom Settings
@@ -141,7 +148,7 @@ export default function DashboardApp() {
 
     try {
       if (account) {
-        // Send Real Transaction on Ritual Testnet via MetaMask
+        // Send Real Write Transaction on Ritual Testnet via MetaMask
         const hash = await submitEntryOnChain(selectedProject.id, submissionUrl, account);
         setTxHash(hash);
         setSubmissionStatus('TX_BROADCASTED_ON_RITUAL');
@@ -164,6 +171,7 @@ export default function DashboardApp() {
           contestId: selectedProject.id,
           projectId: selectedProject.id,
           submitter: submitterAddr,
+          discordHandle: discordHandle,
           submissionBlock: blockHeight + 2,
           contentUrl: submissionUrl,
           fetchedText: fetchedText,
@@ -189,10 +197,19 @@ export default function DashboardApp() {
 
         setSubmissions(prev => [newSubmission, ...prev]);
 
-        // Recalculate leaderboard & OG role assignment
+        // Recalculate Project Leaderboard & OG Role assignment
         setLeaderboard(prev => {
           const updated = [
-            { submissionId: newSubId, submitter: submitterAddr, finalScore: evalResult.finalScore, objectiveScore: evalResult.objectiveScore, submissionBlock: blockHeight },
+            { 
+              submissionId: newSubId, 
+              projectId: selectedProject.id,
+              submitter: submitterAddr, 
+              discordHandle: discordHandle,
+              contentUrl: submissionUrl,
+              finalScore: evalResult.finalScore, 
+              objectiveScore: evalResult.objectiveScore, 
+              submissionBlock: blockHeight 
+            },
             ...prev
           ].sort((a, b) => b.finalScore - a.finalScore);
 
@@ -250,15 +267,71 @@ export default function DashboardApp() {
   // Presets
   const fillValidUrl = () => {
     setSubmissionUrl("https://x.com/crypto_builder/status/19824001");
+    setDiscordHandle("satoshi_builder#1001");
   };
 
   const fillInvalidUrl = () => {
     setSubmissionUrl("https://x.com/spammer/status/1982999-fail-invalid");
+    setDiscordHandle("spammer_bot#9999");
   };
 
   return (
     <div className="min-h-screen bg-[#040705] text-slate-100 font-sans flex flex-col selection:bg-[#00E575] selection:text-[#040705] ritual-bg-grid-sharp select-none">
       
+      {/* Onboarding Role Selection Modal */}
+      {!userRoleMode && (
+        <div className="fixed inset-0 z-50 bg-[#040705]/95 backdrop-blur-md flex items-center justify-center p-6 border-4 border-[#00E575]/40 font-mono">
+          <div className="max-w-xl w-full glass-card-sharp p-8 space-y-6 text-center border-2 border-[#00E575]">
+            <div className="w-12 h-12 bg-[#00E575] text-[#040705] flex items-center justify-center font-black mx-auto">
+              <ShieldCheck className="w-7 h-7 text-[#040705]" />
+            </div>
+
+            <div>
+              <h2 className="text-2xl font-black text-white uppercase tracking-tight font-sans">
+                Welcome to Merit Protocol
+              </h2>
+              <p className="text-xs text-slate-400 mt-2 leading-relaxed font-sans">
+                Select your role to access project campaign settings or contribute to active Web3 project contests.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
+              <button
+                onClick={() => { setUserRoleMode('owner'); setActiveTab('console'); }}
+                className="p-6 bg-[#07110c] hover:bg-[#00E575]/15 border-2 border-[#00E575]/40 hover:border-[#00E575] text-left transition-all group space-y-3"
+              >
+                <div className="flex justify-between items-center text-[#00E575] font-bold text-xs">
+                  <span>ROLE 01</span>
+                  <Settings className="w-4 h-4" />
+                </div>
+                <h3 className="font-extrabold text-white text-base group-hover:text-[#00E575] uppercase">
+                  Project Owner
+                </h3>
+                <p className="text-[11px] text-slate-400 leading-relaxed font-sans">
+                  Open contest & campaign. Lock escrow prizes & set rubric rules.
+                </p>
+              </button>
+
+              <button
+                onClick={() => { setUserRoleMode('contributor'); setActiveTab('projects'); }}
+                className="p-6 bg-[#07110c] hover:bg-[#00E575]/15 border-2 border-[#00E575]/40 hover:border-[#00E575] text-left transition-all group space-y-3"
+              >
+                <div className="flex justify-between items-center text-[#00E575] font-bold text-xs">
+                  <span>ROLE 02</span>
+                  <User className="w-4 h-4" />
+                </div>
+                <h3 className="font-extrabold text-white text-base group-hover:text-[#00E575] uppercase">
+                  Contributor
+                </h3>
+                <p className="text-[11px] text-slate-400 leading-relaxed font-sans">
+                  Submit X post link + Discord username. Compete for OG role.
+                </p>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Top Header - Sharp Square */}
       <header className="border-b border-[#00E575]/30 bg-[#07110c]/90 sticky top-0 z-40 backdrop-blur-md">
         <div className="max-w-[1400px] mx-auto px-6 h-20 flex items-center justify-between">
@@ -280,19 +353,20 @@ export default function DashboardApp() {
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            {/* Status Badges */}
-            <div className="hidden md:flex items-center gap-2 bg-[#07110c] px-3.5 py-2 border border-[#00E575]/30 text-xs font-mono">
-              <Terminal className="w-3.5 h-3.5 text-[#00E575]" />
-              <span className="text-slate-400">MODE:</span>
-              <span className={isMockMode ? "text-amber-400 font-bold" : "text-[#00E575] font-bold"}>
-                {isMockMode ? "MOCK TEE MODE" : "VERIFIED TEE MODE"}
-              </span>
-            </div>
+          <div className="flex items-center gap-4 font-mono text-xs">
+            {/* Role Mode Switcher */}
+            {userRoleMode && (
+              <button
+                onClick={() => setUserRoleMode(userRoleMode === 'owner' ? 'contributor' : 'owner')}
+                className="bg-[#00E575]/15 border border-[#00E575]/40 text-[#00E575] px-3.5 py-2 font-bold uppercase hover:bg-[#00E575]/25 transition-colors"
+              >
+                ROLE: {userRoleMode === 'owner' ? "PROJECT OWNER" : "CONTRIBUTOR"} ⚙️
+              </button>
+            )}
 
             {/* Wallet Button */}
             {account ? (
-              <div className="flex items-center gap-2 bg-[#07110c] border border-[#00E575]/40 px-4 py-2 text-xs font-mono text-[#00E575]">
+              <div className="flex items-center gap-2 bg-[#07110c] border border-[#00E575]/40 px-4 py-2 text-[#00E575]">
                 <div className="w-2.5 h-2.5 bg-[#00E575]" />
                 <span>{`${account.substring(0, 6)}...${account.substring(38)}`}</span>
               </div>
@@ -300,7 +374,7 @@ export default function DashboardApp() {
               <button
                 onClick={connectWallet}
                 disabled={isConnecting}
-                className="btn-ritual-sharp h-10 px-5 text-xs font-mono uppercase tracking-wider flex items-center gap-2"
+                className="btn-ritual-sharp h-10 px-5 uppercase tracking-wider flex items-center gap-2"
               >
                 <Wallet className="w-4 h-4" />
                 <span>{isConnecting ? "Connecting..." : "Connect Wallet"}</span>
@@ -325,20 +399,22 @@ export default function DashboardApp() {
               }`}
             >
               <FolderPlus className="w-4 h-4" />
-              <span>01//Projects Hub</span>
+              <span>01//Projects & Campaigns</span>
             </button>
 
-            <button
-              onClick={() => setActiveTab('console')}
-              className={`w-full flex items-center gap-3 px-4 py-3.5 text-xs font-mono uppercase tracking-wider transition-all ${
-                activeTab === 'console' 
-                  ? 'bg-[#00E575] text-[#040705] font-black border border-[#00E575]' 
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-[#07110c]'
-              }`}
-            >
-              <Settings className="w-4 h-4" />
-              <span>02//Project Settings</span>
-            </button>
+            {userRoleMode === 'owner' && (
+              <button
+                onClick={() => setActiveTab('console')}
+                className={`w-full flex items-center gap-3 px-4 py-3.5 text-xs font-mono uppercase tracking-wider transition-all ${
+                  activeTab === 'console' 
+                    ? 'bg-[#00E575] text-[#040705] font-black border border-[#00E575]' 
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-[#07110c]'
+                }`}
+              >
+                <Settings className="w-4 h-4" />
+                <span>02//Open Campaign</span>
+              </button>
+            )}
 
             <button
               onClick={() => setActiveTab('leaderboard')}
@@ -349,7 +425,7 @@ export default function DashboardApp() {
               }`}
             >
               <UserCheck className="w-4 h-4" />
-              <span>03//OG Leaderboard</span>
+              <span>03//Participant List</span>
             </button>
 
             <button
@@ -361,7 +437,7 @@ export default function DashboardApp() {
               }`}
             >
               <Award className="w-4 h-4" />
-              <span>04//Reputation</span>
+              <span>04//Reputation Badges</span>
             </button>
           </div>
 
@@ -386,18 +462,18 @@ export default function DashboardApp() {
             </div>
           </div>
 
-          {/* Preset Buttons for Quick Testing */}
+          {/* Preset Buttons */}
           <div className="glass-card-sharp p-5 space-y-3">
             <div className="flex items-center gap-2 text-xs font-mono text-[#00E575] font-bold mb-1 uppercase tracking-wider">
               <LinkIcon className="w-3.5 h-3.5" />
-              <span>TEST POST URL PRESETS</span>
+              <span>TEST PRESETS</span>
             </div>
 
             <button
               onClick={fillValidUrl}
               className="w-full text-[11px] font-mono py-2.5 bg-[#00E575]/20 hover:bg-[#00E575]/30 text-[#00E575] border border-[#00E575] font-bold uppercase text-left px-3 flex items-center justify-between"
             >
-              <span>Valid X Post URL</span>
+              <span>Valid Post & Discord</span>
               <span className="text-emerald-400 font-bold">✓ PASS (96/100)</span>
             </button>
 
@@ -405,7 +481,7 @@ export default function DashboardApp() {
               onClick={fillInvalidUrl}
               className="w-full text-[11px] font-mono py-2.5 bg-red-950/40 hover:bg-red-900/50 text-red-400 border border-red-500/40 font-bold uppercase text-left px-3 flex items-center justify-between"
             >
-              <span>Invalid X Post URL</span>
+              <span>Invalid Post & Discord</span>
               <span className="text-red-400 font-bold">✗ FAIL (15/100)</span>
             </button>
           </div>
@@ -414,15 +490,15 @@ export default function DashboardApp() {
         {/* Content Area */}
         <main className="lg:col-span-9 space-y-6">
 
-          {/* TAB 1: PROJECTS HUB */}
+          {/* TAB 1: PROJECTS & CAMPAIGNS HUB */}
           {activeTab === 'projects' && (
             <div className="space-y-6">
               <div>
                 <h2 className="text-2xl font-black text-white font-sans uppercase tracking-tight mb-1">
-                  01 // Select Project & Submit X Post URL
+                  01 // Active Projects & Contests
                 </h2>
                 <p className="text-xs font-mono text-slate-400">
-                  Select a featured project, enter your X post URL. System automatically fetches post content via Ritual HTTP Precompile (0x0801) and evaluates quality score.
+                  Select a project below to view requirements, submit your X post link + Discord username, or inspect participant rankings.
                 </p>
               </div>
 
@@ -455,19 +531,19 @@ export default function DashboardApp() {
                       <span className="flex items-center gap-1 text-[#00E575] font-bold">
                         <Crown className="w-3.5 h-3.5" /> Top {p.topOgLimit} Get OG
                       </span>
-                      <span className="text-slate-400">{p.participantCount} Entries</span>
+                      <span className="text-slate-400">{p.participantCount} Participants</span>
                     </div>
                   </button>
                 ))}
               </div>
 
-              {/* Selected Project Submission Workspace (ONLY 1 INPUT: URL!) */}
+              {/* Selected Project Workspace & Submission */}
               {selectedProject && (
                 <div className="glass-card-sharp p-6 space-y-6 border-2 border-[#00E575]">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#00E575]/20 pb-6">
                     <div>
                       <span className="text-xs font-mono text-[#00E575] font-bold block mb-1">
-                        ACTIVE PROJECT #0{selectedProject.id} :: {selectedProject.category}
+                        PROJECT #0{selectedProject.id} :: {selectedProject.category}
                       </span>
                       <h2 className="text-2xl font-black text-white uppercase">{selectedProject.name}</h2>
                       <p className="text-xs text-slate-400 mt-1">{selectedProject.description}</p>
@@ -478,51 +554,38 @@ export default function DashboardApp() {
                     </div>
                   </div>
 
-                  {/* Project Custom Settings & Requirements */}
-                  <div className="bg-[#07110c] border border-[#00E575]/40 p-4 space-y-3 font-mono text-xs">
-                    <div className="flex items-center justify-between text-[#00E575] font-bold">
-                      <span>AUTOMATED EVALUATION REQUIREMENTS (PRECOMPILE 0x0801 AUTO-FETCH)</span>
-                      <span>MONTHLY OG RANKING: TOP {selectedProject.topOgLimit}</span>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3 pt-1">
-                      <div className="bg-[#040705] p-3 border border-[#00E575]/30">
-                        <span className="text-slate-400 block text-[10px] mb-1">MIN WORD COUNT</span>
-                        <span className="text-white font-bold text-sm">{selectedProject.requirements.minWords} Words</span>
-                      </div>
-
-                      <div className="bg-[#040705] p-3 border border-[#00E575]/30">
-                        <span className="text-slate-400 block text-[10px] mb-1">REQUIRED MENTION</span>
-                        <span className="text-[#00E575] font-bold text-sm">{selectedProject.requirements.requiredMentions.join(', ')}</span>
-                      </div>
-
-                      <div className="bg-[#040705] p-3 border border-[#00E575]/30">
-                        <span className="text-slate-400 block text-[10px] mb-1">REQUIRED HASHTAG</span>
-                        <span className="text-[#00E575] font-bold text-sm">{selectedProject.requirements.requiredHashtags.join(', ')}</span>
-                      </div>
-
-                      <div className="bg-[#040705] p-3 border border-[#00E575]/30">
-                        <span className="text-slate-400 block text-[10px] mb-1">REQUIRED KEYWORD</span>
-                        <span className="text-emerald-400 font-bold text-sm">{selectedProject.requirements.requiredKeywords.join(', ')}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Clean Submission Form (ONLY X POST URL!) */}
+                  {/* Submission Form (X Link + Discord Username) */}
                   <form onSubmit={handleProjectSubmit} className="space-y-4 pt-2">
-                    <div>
-                      <label className="block text-xs font-mono uppercase text-slate-300 mb-2 flex items-center gap-2">
-                        <LinkIcon className="w-4 h-4 text-[#00E575]" />
-                        <span>Enter Contribution X/Twitter Post URL (Content Auto-Fetched via Precompile 0x0801)</span>
-                      </label>
-                      <input
-                        type="url"
-                        required
-                        value={submissionUrl}
-                        onChange={(e) => setSubmissionUrl(e.target.value)}
-                        placeholder="https://x.com/your_handle/status/19824001"
-                        className="w-full bg-[#07110c] border border-[#00E575]/40 px-5 py-4 text-xs font-mono text-white placeholder-slate-600 focus:outline-none focus:border-[#00E575] text-sm"
-                      />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-mono uppercase text-slate-300 mb-2 flex items-center gap-1.5">
+                          <LinkIcon className="w-4 h-4 text-[#00E575]" />
+                          <span>1. X / Twitter Post Link</span>
+                        </label>
+                        <input
+                          type="url"
+                          required
+                          value={submissionUrl}
+                          onChange={(e) => setSubmissionUrl(e.target.value)}
+                          placeholder="https://x.com/your_handle/status/19824001"
+                          className="w-full bg-[#07110c] border border-[#00E575]/40 px-4 py-3.5 text-xs font-mono text-white placeholder-slate-600 focus:outline-none focus:border-[#00E575]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-mono uppercase text-slate-300 mb-2 flex items-center gap-1.5">
+                          <MessageSquare className="w-4 h-4 text-[#00E575]" />
+                          <span>2. Discord Username</span>
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={discordHandle}
+                          onChange={(e) => setDiscordHandle(e.target.value)}
+                          placeholder="e.g. builder#1234 or @discord_user"
+                          className="w-full bg-[#07110c] border border-[#00E575]/40 px-4 py-3.5 text-xs font-mono text-white placeholder-slate-600 focus:outline-none focus:border-[#00E575]"
+                        />
+                      </div>
                     </div>
 
                     <button
@@ -531,7 +594,7 @@ export default function DashboardApp() {
                       className="btn-ritual-sharp h-14 px-8 text-xs font-mono uppercase tracking-wider flex items-center gap-3 w-full justify-center"
                     >
                       <Send className="w-4 h-4" />
-                      <span>{isSubmitting ? "Signing & Auto-Fetching X Data..." : `Sign Wallet & Submit Entry URL to ${selectedProject.name}`}</span>
+                      <span>{isSubmitting ? "Signing Wallet & Auto-Fetching X Data..." : `Sign Wallet & Submit Entry to ${selectedProject.name}`}</span>
                     </button>
                   </form>
 
@@ -565,7 +628,7 @@ export default function DashboardApp() {
                     </div>
                   )}
 
-                  {/* Real AI Evaluation & Fetched Content Breakdown Box */}
+                  {/* Real AI Evaluation Breakdown */}
                   {latestEvaluationResult && (
                     <div className={`p-5 border-2 font-mono text-xs space-y-4 ${
                       latestEvaluationResult.hasPassedHardReqs 
@@ -577,12 +640,12 @@ export default function DashboardApp() {
                           {latestEvaluationResult.hasPassedHardReqs ? (
                             <>
                               <CheckCircle2 className="w-5 h-5 text-[#00E575]" />
-                              <span className="text-[#00E575]">AUTO-FETCHED X CONTENT PASSED — HIGH QUALITY SCORE</span>
+                              <span className="text-[#00E575]">X POST CONTENT PASSED — HIGH QUALITY SCORE</span>
                             </>
                           ) : (
                             <>
                               <XCircle className="w-5 h-5 text-red-500" />
-                              <span className="text-red-400">AUTO-FETCHED X CONTENT FAILED — LOW SCORE PENALTY</span>
+                              <span className="text-red-400">X POST CONTENT FAILED — LOW SCORE PENALTY</span>
                             </>
                           )}
                         </div>
@@ -608,15 +671,15 @@ export default function DashboardApp() {
             </div>
           )}
 
-          {/* TAB 2: PROJECT SETTINGS */}
+          {/* TAB 2: OPEN CAMPAIGN / PROJECT SETTINGS (FOR PROJECT OWNER) */}
           {activeTab === 'console' && (
             <div className="glass-card-sharp p-6 space-y-6">
               <div>
                 <h2 className="text-xl font-black text-white font-sans uppercase tracking-tight mb-1">
-                  02 // Project Owner Settings & Creation
+                  02 // Open Campaign / Project Owner Settings
                 </h2>
                 <p className="text-xs font-mono text-slate-400">
-                  Create a new project or configure rules, mandatory tags, escrow prize, and monthly OG winner limits.
+                  Configure project rules, lock MERIT prize escrow pool, set mandatory mentions/hashtags, and assign monthly OG winner limits.
                 </p>
               </div>
 
@@ -725,21 +788,21 @@ export default function DashboardApp() {
                   disabled={isCreatingProject}
                   className="btn-ritual-sharp w-full h-13 text-xs font-mono uppercase tracking-wider"
                 >
-                  {isCreatingProject ? "Saving Project & Lock Prize..." : "Save Project Settings & Lock Escrow"}
+                  {isCreatingProject ? "Saving Project & Lock Escrow..." : "Save Project Settings & Lock Escrow"}
                 </button>
               </form>
             </div>
           )}
 
-          {/* TAB 3: MONTHLY OG LEADERBOARD */}
+          {/* TAB 3: PARTICIPANT LIST & OG RANKINGS (WITH X LINK & DISCORD HANDLE) */}
           {activeTab === 'leaderboard' && (
             <div className="glass-card-sharp p-6 space-y-6">
               <div>
                 <h2 className="text-xl font-black text-white font-sans uppercase tracking-tight mb-1">
-                  03 // Monthly Quality Score & OG Role Leaderboard
+                  03 // Project Participant List & Un-Biased Ranking
                 </h2>
                 <p className="text-xs font-mono text-slate-400">
-                  Participants ranked by AI quality evaluation score. Top {selectedProject?.topOgLimit || 3} participants earn the OG Role Merit Badge automatically at the end of the month.
+                  Transparent ranking calculated automatically by Ritual AI. Displays X post link, Discord username, quality score, and OG Role qualification.
                 </p>
               </div>
 
@@ -748,28 +811,43 @@ export default function DashboardApp() {
                   <thead>
                     <tr className="border-b border-[#00E575]/30 text-slate-400 bg-[#07110c]">
                       <th className="py-3.5 px-4 uppercase">RANK</th>
-                      <th className="py-3.5 px-4 uppercase">CONTRIBUTOR</th>
-                      <th className="py-3.5 px-4 uppercase">QUALITY SCORE</th>
+                      <th className="py-3.5 px-4 uppercase">DISCORD USERNAME</th>
+                      <th className="py-3.5 px-4 uppercase">WALLET ADDRESS</th>
+                      <th className="py-3.5 px-4 uppercase">X POST LINK</th>
+                      <th className="py-3.5 px-4 uppercase">AI SCORE</th>
                       <th className="py-3.5 px-4 uppercase">OG ROLE STATUS</th>
-                      <th className="py-3.5 px-4 uppercase">BLOCK</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#00E575]/15 text-xs">
                     {leaderboard.map((item, idx) => (
                       <tr key={idx} className={`hover:bg-[#00E575]/10 transition-colors ${item.isOgWinner ? 'bg-[#00E575]/5' : ''}`}>
                         <td className="py-4 px-4 font-bold text-[#00E575]">#{idx + 1}</td>
-                        <td className="py-4 px-4 font-medium text-slate-200">{item.submitter}</td>
+                        <td className="py-4 px-4 font-bold text-white flex items-center gap-1.5">
+                          <MessageSquare className="w-3.5 h-3.5 text-[#00E575]" />
+                          <span>{item.discordHandle || "discord_user#0001"}</span>
+                        </td>
+                        <td className="py-4 px-4 text-slate-300 font-medium">{item.submitter}</td>
+                        <td className="py-4 px-4">
+                          <a
+                            href={item.contentUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-[#00E575] underline flex items-center gap-1 font-bold"
+                          >
+                            <span>View Post</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        </td>
                         <td className="py-4 px-4 font-bold text-white">{item.finalScore} / 100</td>
                         <td className="py-4 px-4">
                           {item.isOgWinner ? (
                             <span className="px-2.5 py-1 bg-[#00E575] text-[#040705] font-black text-[10px] uppercase flex items-center gap-1 w-max border border-[#00E575]">
-                              <Crown className="w-3 h-3" /> OG ROLE QUALIFIED
+                              <Crown className="w-3 h-3" /> OG QUALIFIED 🏆
                             </span>
                           ) : (
                             <span className="text-slate-500 text-[11px]">CONTRIBUTOR</span>
                           )}
                         </td>
-                        <td className="py-4 px-4 text-slate-500">#{item.submissionBlock}</td>
                       </tr>
                     ))}
                   </tbody>
