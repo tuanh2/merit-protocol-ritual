@@ -16,7 +16,9 @@ import {
   FolderPlus,
   Settings,
   Sparkles,
-  BarChart3
+  BarChart3,
+  History,
+  FileText
 } from 'lucide-react';
 import { 
   fetchChainStatus, 
@@ -50,6 +52,9 @@ export default function DashboardApp() {
   // Selected Item Modal State (Opens when clicking any card!)
   const [activeModalItem, setActiveModalItem] = useState<ProjectCampaignData | null>(null);
   const [modalTab, setModalTab] = useState<'submit' | 'leaderboard'>('submit');
+
+  // Profile Modal State
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   // Submissions & Leaderboard State
   const [leaderboard, setLeaderboard] = useState<LeaderboardItem[]>(SHOWCASE_LEADERBOARD);
@@ -162,6 +167,7 @@ export default function DashboardApp() {
           failureReason: evalResult.reason,
         };
 
+        // Add to history log
         setSubmissions(prev => [newSubmission, ...prev]);
 
         // Update Project Trackers & Leaderboard
@@ -230,6 +236,13 @@ export default function DashboardApp() {
     }, 1200);
   }
 
+  // Calculate User Profile Statistics
+  const userSubmissions = submissions;
+  const totalUserSubmissions = userSubmissions.length;
+  const userAvgScore = totalUserSubmissions > 0 
+    ? Math.round(userSubmissions.reduce((acc, curr) => acc + curr.finalScore, 0) / totalUserSubmissions) 
+    : 0;
+
   return (
     <div className="min-h-screen bg-[#040705] text-slate-100 font-sans flex flex-col selection:bg-[#00E575] selection:text-[#040705] ritual-bg-grid-sharp select-none">
       
@@ -254,6 +267,15 @@ export default function DashboardApp() {
           </div>
 
           <div className="flex items-center gap-4 font-mono text-xs">
+            {/* User Profile & Submission History Button */}
+            <button
+              onClick={() => setShowProfileModal(true)}
+              className="bg-[#07110c] border border-[#00E575]/40 text-[#00E575] px-3.5 py-2 font-bold uppercase hover:bg-[#00E575]/20 transition-colors flex items-center gap-2"
+            >
+              <User className="w-4 h-4 text-[#00E575]" />
+              <span>My Profile & History ({totalUserSubmissions})</span>
+            </button>
+
             {/* Minimal Mode Toggle */}
             <div className="flex items-center bg-[#040705] border border-[#00E575]/40 p-1">
               <button
@@ -282,10 +304,13 @@ export default function DashboardApp() {
 
             {/* Wallet Button */}
             {account ? (
-              <div className="flex items-center gap-2 bg-[#07110c] border border-[#00E575]/40 px-4 py-2 text-[#00E575]">
+              <button
+                onClick={() => setShowProfileModal(true)}
+                className="flex items-center gap-2 bg-[#07110c] border border-[#00E575]/40 px-4 py-2 text-[#00E575] font-bold"
+              >
                 <div className="w-2.5 h-2.5 bg-[#00E575]" />
                 <span>{`${account.substring(0, 6)}...${account.substring(38)}`}</span>
-              </div>
+              </button>
             ) : (
               <button
                 onClick={connectWallet}
@@ -533,6 +558,109 @@ export default function DashboardApp() {
 
       </main>
 
+      {/* USER PROFILE AND SUBMISSION HISTORY MODAL */}
+      {showProfileModal && (
+        <div className="fixed inset-0 z-50 bg-[#040705]/95 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 font-mono">
+          <div className="max-w-4xl w-full glass-card-sharp p-6 space-y-6 border-2 border-[#00E575] max-h-[90vh] overflow-y-auto">
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-[#00E575]/20 pb-4">
+              <div>
+                <span className="text-xs text-[#00E575] font-bold block mb-1">CONTRIBUTOR PROFILE</span>
+                <h2 className="text-2xl font-black text-white uppercase font-sans">User Submission History and Stats</h2>
+              </div>
+              <button
+                onClick={() => setShowProfileModal(false)}
+                className="text-slate-400 hover:text-white px-3 py-1 border border-[#00E575]/30 text-xs font-bold uppercase"
+              >
+                CLOSE
+              </button>
+            </div>
+
+            {/* Profile Overview Stats */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 font-mono text-xs">
+              <div className="bg-[#07110c] border border-[#00E575]/30 p-4 space-y-1">
+                <span className="text-slate-400 text-[11px] block uppercase">Total Posts Submitted</span>
+                <span className="text-2xl font-black text-white">{totalUserSubmissions}</span>
+              </div>
+              <div className="bg-[#07110c] border border-[#00E575]/30 p-4 space-y-1">
+                <span className="text-slate-400 text-[11px] block uppercase">Average Quality Score</span>
+                <span className="text-2xl font-black text-[#00E575]">{userAvgScore} / 100</span>
+              </div>
+              <div className="bg-[#07110c] border border-[#00E575]/30 p-4 space-y-1">
+                <span className="text-slate-400 text-[11px] block uppercase">Joined Campaigns</span>
+                <span className="text-2xl font-black text-white">{projects.length}</span>
+              </div>
+            </div>
+
+            {/* Submissions Breakdown per Campaign */}
+            <div className="space-y-3">
+              <h3 className="font-bold text-white uppercase text-sm font-sans border-b border-[#00E575]/20 pb-2">
+                Submissions Breakdown by Campaign
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 font-mono text-xs">
+                {projects.map(p => {
+                  const countForProj = submissions.filter(s => s.projectId === p.id).length;
+                  return (
+                    <div key={p.id} className="p-3 bg-[#040705] border border-[#00E575]/30 flex items-center justify-between">
+                      <span className="text-slate-200 font-bold truncate pr-2">{p.name}</span>
+                      <span className="text-[#00E575] font-black px-2 py-0.5 bg-[#00E575]/10 border border-[#00E575]/30 shrink-0">
+                        {countForProj} Posts
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Detailed Submission History Table */}
+            <div className="space-y-3 pt-2">
+              <h3 className="font-bold text-white uppercase text-sm font-sans border-b border-[#00E575]/20 pb-2">
+                Full Submission Log and AI Reasons
+              </h3>
+
+              <div className="space-y-4">
+                {submissions.map((sub, idx) => (
+                  <div key={idx} className="p-4 bg-[#040705] border border-[#00E575]/30 space-y-3 font-mono text-xs">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#00E575]/20 pb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[#00E575] font-bold">ENTRY #{sub.id}</span>
+                        <span className="text-slate-400 font-bold">• {sub.discordHandle}</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <a
+                          href={sub.contentUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-[#00E575] underline font-bold"
+                        >
+                          View X Post Link
+                        </a>
+                        <span className={`px-2 py-0.5 font-bold border ${
+                          sub.finalScore >= 80 
+                            ? 'bg-[#00E575]/20 text-[#00E575] border-[#00E575]' 
+                            : 'bg-red-500/20 text-red-400 border-red-500'
+                        }`}>
+                          Score {sub.finalScore} / 100
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* AI Evaluation Reason */}
+                    {sub.failureReason && (
+                      <div className="bg-[#07110c] p-3 border border-[#00E575]/30 text-slate-300 leading-relaxed text-[11px] whitespace-pre-wrap">
+                        {sub.failureReason}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
       {/* UNIFIED ITEM MODAL */}
       {activeModalItem && (
         <div className="fixed inset-0 z-50 bg-[#040705]/90 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 font-mono">
@@ -550,9 +678,9 @@ export default function DashboardApp() {
 
               <button
                 onClick={() => setActiveModalItem(null)}
-                className="text-slate-400 hover:text-white p-1"
+                className="text-slate-400 hover:text-white px-2 py-1 border border-[#00E575]/30 text-xs font-bold uppercase"
               >
-                <XCircle className="w-6 h-6" />
+                CLOSE
               </button>
             </div>
 
