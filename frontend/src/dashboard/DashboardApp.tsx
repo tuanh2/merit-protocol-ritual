@@ -28,6 +28,9 @@ import {
 import { 
   fetchChainStatus, 
   getAddresses, 
+  submitEntryOnChain,
+  createContestOnChain,
+  switchOrAddRitualChain,
   SHOWCASE_CONTESTS, 
   SHOWCASE_LEADERBOARD, 
   SHOWCASE_SUBMISSIONS,
@@ -54,6 +57,7 @@ export default function DashboardApp() {
   const [submissionUrl, setSubmissionUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionStatus, setSubmissionStatus] = useState<string | null>(null);
+  const [txHash, setTxHash] = useState<string | null>(null);
 
   // New Contest Form State
   const [newTitle, setNewTitle] = useState('');
@@ -90,69 +94,105 @@ export default function DashboardApp() {
     }
     try {
       setIsConnecting(true);
+      await switchOrAddRitualChain();
       const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
       if (accounts && accounts.length > 0) {
         setAccount(accounts[0]);
       }
     } catch (e: any) {
       console.error(e);
+      alert(e.message || "Could not connect to wallet.");
     } finally {
       setIsConnecting(false);
     }
   }
 
-  // Handle Contest Submission
+  // Handle Live On-Chain Contest Submission
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!submissionUrl) return;
 
     setIsSubmitting(true);
-    setSubmissionStatus('SUBMITTED');
+    setSubmissionStatus('AWAITING_SIGNATURE');
+    setTxHash(null);
 
-    // Simulate Multi-Block Async State Progression
-    setTimeout(() => setSubmissionStatus('FETCH_SCHEDULED'), 1200);
-    setTimeout(() => setSubmissionStatus('REQUIREMENTS_VERIFIED'), 2400);
-    setTimeout(() => setSubmissionStatus('AI_EVALUATING'), 3600);
-    setTimeout(() => {
-      setSubmissionStatus('SCORED');
-      const newSubId = Date.now();
-      const newScore = Math.floor(Math.random() * 15) + 82;
+    try {
+      if (account) {
+        // Real Testnet Write Transaction via MetaMask
+        const hash = await submitEntryOnChain(selectedContest?.id || 1, submissionUrl, account);
+        setTxHash(hash);
+        setSubmissionStatus('SUBMITTED_ONCHAIN');
+      } else {
+        // Anonymous/Demo Fallback
+        setSubmissionStatus('SUBMITTED');
+      }
 
-      const newSubmission: SubmissionData = {
-        id: newSubId,
-        contestId: selectedContest?.id || 1,
-        submitter: account ? `${account.substring(0, 6)}...${account.substring(38)}` : "0xUSER...42A1",
-        submissionBlock: blockHeight + 2,
-        contentUrl: submissionUrl,
-        status: "SCORED",
-        objectiveScore: 100,
-        aiScore: newScore,
-        finalScore: newScore,
-        aiBreakdown: {
-          relevance: newScore + 2,
-          accuracy: newScore - 1,
-          originality: newScore + 4,
-          clarity: newScore + 1,
-          usefulness: newScore,
-          creativity: newScore - 2,
-          reason: "Evaluated by Ritual AI Engine: Comprehensive explanation of Ritual AI precompile state machine.",
-          usedMock: isMockMode
-        }
-      };
+      // Progression simulation
+      setTimeout(() => setSubmissionStatus('FETCH_SCHEDULED'), 1200);
+      setTimeout(() => setSubmissionStatus('REQUIREMENTS_VERIFIED'), 2400);
+      setTimeout(() => setSubmissionStatus('AI_EVALUATING'), 3600);
+      setTimeout(() => {
+        setSubmissionStatus('SCORED');
+        const newSubId = Date.now();
+        const newScore = Math.floor(Math.random() * 15) + 82;
 
-      setSubmissions(prev => [newSubmission, ...prev]);
-      setUserReputation(prev => prev + 25);
+        const newSubmission: SubmissionData = {
+          id: newSubId,
+          contestId: selectedContest?.id || 1,
+          submitter: account ? `${account.substring(0, 6)}...${account.substring(38)}` : "0xUSER...42A1",
+          submissionBlock: blockHeight + 2,
+          contentUrl: submissionUrl,
+          status: "SCORED",
+          objectiveScore: 100,
+          aiScore: newScore,
+          finalScore: newScore,
+          aiBreakdown: {
+            relevance: newScore + 2,
+            accuracy: newScore - 1,
+            originality: newScore + 4,
+            clarity: newScore + 1,
+            usefulness: newScore,
+            creativity: newScore - 2,
+            reason: "Evaluated by Ritual AI Engine: Comprehensive explanation of Ritual AI precompile state machine.",
+            usedMock: isMockMode
+          }
+        };
+
+        setSubmissions(prev => [newSubmission, ...prev]);
+        setUserReputation(prev => prev + 25);
+        setIsSubmitting(false);
+      }, 4800);
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || "Transaction failed or was rejected by user.");
       setIsSubmitting(false);
-    }, 4800);
+      setSubmissionStatus(null);
+    }
   }
 
-  // Handle New Contest Creation
+  // Handle Live On-Chain Contest Creation
   async function handleCreateContest(e: React.FormEvent) {
     e.preventDefault();
     if (!newTitle) return;
 
     setIsCreatingContest(true);
-    setTimeout(() => {
+    try {
+      if (account) {
+        // Real Testnet Transaction via MetaMask
+        const hash = await createContestOnChain(
+          newTitle,
+          newDesc || "Community contest",
+          newPrize,
+          Number(newWinners),
+          Number(newMinWords),
+          newMentions,
+          newHashtags,
+          account
+        );
+        setTxHash(hash);
+        alert(`Contest creation transaction submitted on Ritual Testnet! Tx: ${hash}`);
+      }
+
       const created: ContestData = {
         id: contests.length + 1,
         title: newTitle,
@@ -179,8 +219,11 @@ export default function DashboardApp() {
       setContests(prev => [created, ...prev]);
       setIsCreatingContest(false);
       setActiveTab('contests');
-      alert("Contest created and prize pool locked successfully on Ritual Testnet!");
-    }, 1500);
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || "Transaction rejected or failed.");
+      setIsCreatingContest(false);
+    }
   }
 
   return (
@@ -240,7 +283,7 @@ export default function DashboardApp() {
       {/* Main Dashboard Layout */}
       <div className="max-w-[1400px] mx-auto px-6 py-8 flex-1 w-full grid grid-cols-1 lg:grid-cols-12 gap-8 relative z-10">
         
-        {/* Sidebar Navigation - Sharp Square */}
+        {/* Sidebar Navigation */}
         <aside className="lg:col-span-3 space-y-6">
           <div className="glass-card-sharp p-3 space-y-1">
             <button
@@ -354,7 +397,7 @@ export default function DashboardApp() {
           </div>
         </aside>
 
-        {/* Content Area - Sharp Square Cards */}
+        {/* Content Area */}
         <main className="lg:col-span-9 space-y-6">
 
           {/* TAB 1: OVERVIEW */}
@@ -498,8 +541,13 @@ export default function DashboardApp() {
                           <span>RITUAL MULTI-BLOCK WORKFLOW STATUS</span>
                           <span>{submissionStatus}</span>
                         </div>
+                        {txHash && (
+                          <div className="text-[11px] text-slate-400 border-b border-[#00E575]/20 pb-2">
+                            TX HASH: <a href={`https://explorer.ritualfoundation.org/tx/${txHash}`} target="_blank" rel="noreferrer" className="text-[#00E575] underline">{txHash}</a>
+                          </div>
+                        )}
                         <div className="grid grid-cols-4 gap-2 pt-2 text-[11px]">
-                          <div className={`p-2 border text-center ${['SUBMITTED','FETCH_SCHEDULED','REQUIREMENTS_VERIFIED','AI_EVALUATING','SCORED'].includes(submissionStatus) ? 'bg-[#00E575]/20 text-[#00E575] border-[#00E575] font-bold' : 'bg-[#040705] text-slate-600 border-slate-900'}`}>
+                          <div className={`p-2 border text-center ${['AWAITING_SIGNATURE','SUBMITTED_ONCHAIN','SUBMITTED','FETCH_SCHEDULED','REQUIREMENTS_VERIFIED','AI_EVALUATING','SCORED'].includes(submissionStatus) ? 'bg-[#00E575]/20 text-[#00E575] border-[#00E575] font-bold' : 'bg-[#040705] text-slate-600 border-slate-900'}`}>
                             ✓ SUBMITTED
                           </div>
                           <div className={`p-2 border text-center ${['REQUIREMENTS_VERIFIED','AI_EVALUATING','SCORED'].includes(submissionStatus) ? 'bg-[#00E575]/20 text-[#00E575] border-[#00E575] font-bold' : 'bg-[#040705] text-slate-600 border-slate-900'}`}>
