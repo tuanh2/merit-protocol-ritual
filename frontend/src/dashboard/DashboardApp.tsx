@@ -97,7 +97,6 @@ export default function DashboardApp() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionStatus, setSubmissionStatus] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
-  const [latestEvaluationResult, setLatestEvaluationResult] = useState<any | null>(null);
 
   // New Campaign Form (Owner Mode)
   const [newCampaignName, setNewCampaignName] = useState('');
@@ -163,7 +162,6 @@ export default function DashboardApp() {
 
     // 2. Evaluate Fetched Post Content against Project's Requirements
     const evalResult = evaluateSubmissionContent(fetchedText, activeModalItem.requirements);
-    setLatestEvaluationResult(evalResult);
 
     try {
       if (account) {
@@ -177,7 +175,6 @@ export default function DashboardApp() {
         setSubmissionStatus('SUBMITTED_ANONYMOUS');
       }
 
-      setTimeout(() => setSubmissionStatus('SCORED'), 3000);
       setTimeout(() => {
         const newSubId = Date.now();
         const submitterAddr = account ? `${account.substring(0, 6)}...${account.substring(38)}` : "0xUSER...42A1";
@@ -198,7 +195,7 @@ export default function DashboardApp() {
           failureReason: evalResult.reason,
         };
 
-        // Add to persistent history log
+        // Save to persistent user profile history
         setSubmissions(prev => [newSubmission, ...prev]);
 
         // Update Project Trackers & Leaderboard
@@ -226,7 +223,7 @@ export default function DashboardApp() {
         });
 
         setIsSubmitting(false);
-      }, 3500);
+      }, 2500);
     } catch (err: any) {
       console.error(err);
       alert(err.message || "Transaction failed");
@@ -390,7 +387,7 @@ export default function DashboardApp() {
                   {contestList.map(c => (
                     <div 
                       key={c.id}
-                      onClick={() => { setActiveModalItem(c); setModalTab('submit'); setSubmissionUrl(''); setDiscordHandle(''); setTxHash(null); setLatestEvaluationResult(null); }}
+                      onClick={() => { setActiveModalItem(c); setModalTab('submit'); setSubmissionUrl(''); setDiscordHandle(''); setTxHash(null); }}
                       className="p-6 bg-[#040705] border border-[#00E575]/30 hover:border-[#00E575] transition-all cursor-pointer group space-y-3 hover:bg-[#07110c]"
                     >
                       <div className="flex justify-between items-center font-mono text-xs">
@@ -431,7 +428,7 @@ export default function DashboardApp() {
                   {campaignList.map(p => (
                     <div 
                       key={p.id}
-                      onClick={() => { setActiveModalItem(p); setModalTab('submit'); setSubmissionUrl(''); setDiscordHandle(''); setTxHash(null); setLatestEvaluationResult(null); }}
+                      onClick={() => { setActiveModalItem(p); setModalTab('submit'); setSubmissionUrl(''); setDiscordHandle(''); setTxHash(null); }}
                       className="p-6 bg-[#040705] border border-[#00E575]/30 hover:border-[#00E575] transition-all cursor-pointer group space-y-3 hover:bg-[#07110c]"
                     >
                       <div className="flex justify-between items-center font-mono text-xs">
@@ -486,7 +483,6 @@ export default function DashboardApp() {
                   />
                 </div>
 
-                {/* CLEAN DROPDOWN TYPE MENU: ONLY PROJECT CAMPAIGN OR CONTEST */}
                 <div>
                   <label className="block text-slate-300 mb-2 uppercase font-bold">TYPE</label>
                   <select
@@ -645,10 +641,10 @@ export default function DashboardApp() {
               </div>
             </div>
 
-            {/* Detailed Submission History Table */}
+            {/* Detailed Submission History Table with AI Score Breakdown & Reasons */}
             <div className="space-y-3 pt-2">
               <h3 className="font-bold text-white uppercase text-sm font-sans border-b border-[#00E575]/20 pb-2">
-                Full Submission Log and AI Reasons
+                Full Submission Log and AI Evaluation Reasons
               </h3>
 
               {submissions.length === 0 ? (
@@ -788,11 +784,11 @@ export default function DashboardApp() {
                     className="btn-ritual-sharp h-13 px-8 text-xs font-mono uppercase tracking-wider flex items-center justify-center gap-2 font-bold w-full"
                   >
                     <Send className="w-4 h-4" />
-                    <span>{isSubmitting ? "Signing and Auto-Fetching Data" : `Sign Wallet and Submit Entry to ${activeModalItem.name}`}</span>
+                    <span>{isSubmitting ? "Signing and Submitting to Chain" : `Sign Wallet and Submit Entry to ${activeModalItem.name}`}</span>
                   </button>
                 </form>
 
-                {/* Instant TxHash Display */}
+                {/* Instant TxHash Display - Clean Broadcast Box Only */}
                 {txHash && (
                   <div className="p-5 bg-[#08150e] border-2 border-[#00E575] font-mono text-xs space-y-3">
                     <div className="flex items-center justify-between text-[#00E575] font-black uppercase text-sm">
@@ -818,45 +814,6 @@ export default function DashboardApp() {
                         <span>View Explorer</span>
                         <ExternalLink className="w-3.5 h-3.5" />
                       </a>
-                    </div>
-                  </div>
-                )}
-
-                {/* Real AI Evaluation Breakdown */}
-                {latestEvaluationResult && (
-                  <div className={`p-5 border-2 font-mono text-xs space-y-4 ${
-                    latestEvaluationResult.hasPassedHardReqs 
-                      ? 'bg-[#08150e] border-[#00E575]' 
-                      : 'bg-red-950/30 border-red-500'
-                  }`}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 font-black text-sm uppercase">
-                        {latestEvaluationResult.hasPassedHardReqs ? (
-                          <>
-                            <CheckCircle2 className="w-5 h-5 text-[#00E575]" />
-                            <span className="text-[#00E575]">PASSED HIGH QUALITY SCORE</span>
-                          </>
-                        ) : (
-                          <>
-                            <XCircle className="w-5 h-5 text-red-500" />
-                            <span className="text-red-400">FAILED LOW SCORE PENALTY</span>
-                          </>
-                        )}
-                      </div>
-                      <span className={`text-xl font-black px-3 py-1 border ${
-                        latestEvaluationResult.hasPassedHardReqs 
-                          ? 'bg-[#00E575]/20 text-[#00E575] border-[#00E575]' 
-                          : 'bg-red-500/20 text-red-400 border-red-500'
-                      }`}>
-                        {latestEvaluationResult.finalScore} / 100
-                      </span>
-                    </div>
-
-                    <div className="bg-[#040705] p-4 border border-[#00E575]/30 space-y-2">
-                      <span className="text-[10px] text-slate-400 block uppercase">AUTO FETCHED TWEET TEXT AND RITUAL AI REASON</span>
-                      <pre className="text-xs text-slate-200 whitespace-pre-wrap leading-relaxed font-mono">
-                        {latestEvaluationResult.reason}
-                      </pre>
                     </div>
                   </div>
                 )}
