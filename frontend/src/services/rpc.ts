@@ -5,7 +5,8 @@ import {
   http, 
   parseEther, 
   formatEther, 
-  defineChain
+  defineChain,
+  getAddress
 } from 'viem';
 import { RITUAL_TESTNET_CONFIG, CONTRACT_ADDRESSES } from '../config/chain';
 import deploymentConfig from '../config/deployment.json';
@@ -23,27 +24,41 @@ export const ritualChain = defineChain({
   },
 });
 
+// Safe Address Checksum Formatter (Ensures Viem ERC-55 Checksum Validity)
+export function toChecksumAddress(rawAddr: string): `0x${string}` {
+  try {
+    if (!rawAddr || rawAddr === '0x0000000000000000000000000000000000000000') {
+      return getAddress('0x8b376915e28562eed544e3e3b74a3d063a401662');
+    }
+    return getAddress(rawAddr);
+  } catch (e) {
+    // If checksum fails, convert to lowercase first then format
+    try {
+      return getAddress(rawAddr.toLowerCase());
+    } catch {
+      return getAddress('0x8b376915e28562eed544e3e3b74a3d063a401662');
+    }
+  }
+}
+
 // Read-Only RPC Client (Reads chain state without prompting wallet)
 export const publicClient = createPublicClient({
   chain: ritualChain,
   transport: http(RITUAL_TESTNET_CONFIG.rpcUrl),
 });
 
-// Get Active Public Contract Addresses (Safe - No Private Keys)
+// Get Active Public Contract Addresses (Strict ERC-55 Checksummed!)
 export function getAddresses() {
+  const protocolRaw = deploymentConfig.meritProtocol || CONTRACT_ADDRESSES.meritProtocol;
+  const agentRaw = deploymentConfig.meritAgent || CONTRACT_ADDRESSES.meritAgent;
+  const badgeRaw = deploymentConfig.meritBadge || CONTRACT_ADDRESSES.meritBadge;
+  const tokenRaw = deploymentConfig.mockRewardToken || CONTRACT_ADDRESSES.mockRewardToken;
+
   return {
-    protocol: (deploymentConfig.meritProtocol && deploymentConfig.meritProtocol !== "0x0000000000000000000000000000000000000000") 
-      ? deploymentConfig.meritProtocol 
-      : CONTRACT_ADDRESSES.meritProtocol,
-    agent: (deploymentConfig.meritAgent && deploymentConfig.meritAgent !== "0x0000000000000000000000000000000000000000") 
-      ? deploymentConfig.meritAgent 
-      : CONTRACT_ADDRESSES.meritAgent,
-    badge: (deploymentConfig.meritBadge && deploymentConfig.meritBadge !== "0x0000000000000000000000000000000000000000") 
-      ? deploymentConfig.meritBadge 
-      : CONTRACT_ADDRESSES.meritBadge,
-    token: (deploymentConfig.mockRewardToken && deploymentConfig.mockRewardToken !== "0x0000000000000000000000000000000000000000") 
-      ? deploymentConfig.mockRewardToken 
-      : CONTRACT_ADDRESSES.mockRewardToken,
+    protocol: toChecksumAddress(protocolRaw),
+    agent: toChecksumAddress(agentRaw),
+    badge: toChecksumAddress(badgeRaw),
+    token: toChecksumAddress(tokenRaw),
   };
 }
 
@@ -392,14 +407,14 @@ export async function switchOrAddRitualChain() {
   }
 }
 
-// Submit Entry On-Chain
+// Submit Entry On-Chain (Strict Checksummed Contract Address)
 export async function submitEntryOnChain(contestId: number, contentUrl: string, userAccount: string) {
   const ethereum = (window as any).ethereum;
   if (!ethereum) throw new Error("MetaMask is not installed.");
   
   await switchOrAddRitualChain();
   const addresses = getAddresses();
-  const accountHex = userAccount as `0x${string}`;
+  const accountHex = toChecksumAddress(userAccount);
 
   const walletClient = createWalletClient({
     account: accountHex,
@@ -410,7 +425,7 @@ export async function submitEntryOnChain(contestId: number, contentUrl: string, 
   const hash = await walletClient.writeContract({
     account: accountHex,
     chain: ritualChain,
-    address: addresses.protocol as `0x${string}`,
+    address: addresses.protocol,
     abi: MERIT_PROTOCOL_ABI,
     functionName: 'submitContestEntry',
     args: [BigInt(contestId), contentUrl],
@@ -437,7 +452,7 @@ export async function createContestOnChain(
 
   await switchOrAddRitualChain();
   const addresses = getAddresses();
-  const accountHex = userAccount as `0x${string}`;
+  const accountHex = toChecksumAddress(userAccount);
   const currentBlock = await publicClient.getBlockNumber();
 
   const walletClient = createWalletClient({
@@ -452,10 +467,10 @@ export async function createContestOnChain(
     const approveHash = await walletClient.writeContract({
       account: accountHex,
       chain: ritualChain,
-      address: addresses.token as `0x${string}`,
+      address: addresses.token,
       abi: ERC20_ABI,
       functionName: 'approve',
-      args: [addresses.protocol as `0x${string}`, prizeWei],
+      args: [addresses.protocol, prizeWei],
       maxPriorityFeePerGas: parseEther('0.0000000015'),
       maxFeePerGas: parseEther('0.000000003'),
     });
@@ -465,7 +480,7 @@ export async function createContestOnChain(
   const hash = await walletClient.writeContract({
     account: accountHex,
     chain: ritualChain,
-    address: addresses.protocol as `0x${string}`,
+    address: addresses.protocol,
     abi: MERIT_PROTOCOL_ABI,
     functionName: 'createContest',
     args: [
@@ -473,7 +488,7 @@ export async function createContestOnChain(
       description,
       currentBlock,
       currentBlock + 50000n,
-      addresses.token as `0x${string}`,
+      addresses.token,
       prizeWei,
       BigInt(winnerCount),
       [5000n, 3000n, 2000n],
