@@ -44,21 +44,52 @@ export default function DashboardApp() {
   const [account, setAccount] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [blockHeight, setBlockHeight] = useState<number>(104520);
-  const [isMockMode, setIsMockMode] = useState(true);
 
-  // Projects & Campaigns State
-  const [projects, setProjects] = useState<ProjectCampaignData[]>(SHOWCASE_PROJECTS);
+  // Projects & Campaigns State (Exactly 1 Contest & 1 Project Campaign)
+  const [projects, setProjects] = useState<ProjectCampaignData[]>(() => {
+    const saved = localStorage.getItem('merit_protocol_projects');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return SHOWCASE_PROJECTS;
+  });
   
-  // Selected Item Modal State (Opens when clicking any card!)
+  // Selected Item Modal State
   const [activeModalItem, setActiveModalItem] = useState<ProjectCampaignData | null>(null);
   const [modalTab, setModalTab] = useState<'submit' | 'leaderboard'>('submit');
 
   // Profile Modal State
   const [showProfileModal, setShowProfileModal] = useState(false);
 
-  // Submissions & Leaderboard State
-  const [leaderboard, setLeaderboard] = useState<LeaderboardItem[]>(SHOWCASE_LEADERBOARD);
-  const [submissions, setSubmissions] = useState<SubmissionData[]>(SHOWCASE_SUBMISSIONS);
+  // Submissions & Leaderboard Persistent State
+  const [submissions, setSubmissions] = useState<SubmissionData[]>(() => {
+    const saved = localStorage.getItem('merit_protocol_submissions');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return SHOWCASE_SUBMISSIONS;
+  });
+
+  const [leaderboard, setLeaderboard] = useState<LeaderboardItem[]>(() => {
+    const saved = localStorage.getItem('merit_protocol_leaderboard');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return SHOWCASE_LEADERBOARD;
+  });
+
+  // Save to LocalStorage whenever state updates
+  useEffect(() => {
+    localStorage.setItem('merit_protocol_projects', JSON.stringify(projects));
+  }, [projects]);
+
+  useEffect(() => {
+    localStorage.setItem('merit_protocol_submissions', JSON.stringify(submissions));
+  }, [submissions]);
+
+  useEffect(() => {
+    localStorage.setItem('merit_protocol_leaderboard', JSON.stringify(leaderboard));
+  }, [leaderboard]);
 
   // Submission Inputs (Empty by default for real user entry!)
   const [submissionUrl, setSubmissionUrl] = useState('');
@@ -81,7 +112,7 @@ export default function DashboardApp() {
   const [newCampaignHashtag, setNewCampaignHashtag] = useState('#RitualTestnet');
   const [isCreatingCampaign, setIsCreatingCampaign] = useState(false);
 
-  // Filter 2 Columns
+  // Filter 2 Columns (1 Contest & 1 Project Campaign)
   const contestList = projects.filter(p => p.type === 'CONTEST');
   const campaignList = projects.filter(p => p.type === 'PROJECT_CAMPAIGN');
 
@@ -136,7 +167,7 @@ export default function DashboardApp() {
 
     try {
       if (account) {
-        // Send Write Transaction on Ritual Testnet
+        // Send Write Transaction on Ritual Testnet Smart Contract
         const hash = await submitEntryOnChain(activeModalItem.id, submissionUrl, account);
         setTxHash(hash);
         setSubmissionStatus('TX_BROADCASTED_ON_RITUAL');
@@ -167,7 +198,7 @@ export default function DashboardApp() {
           failureReason: evalResult.reason,
         };
 
-        // Add to history log
+        // Add to persistent history log
         setSubmissions(prev => [newSubmission, ...prev]);
 
         // Update Project Trackers & Leaderboard
@@ -348,7 +379,7 @@ export default function DashboardApp() {
                 <div className="flex items-center justify-between border-b border-[#00E575]/20 pb-4 font-mono">
                   <div className="flex items-center gap-2">
                     <Trophy className="w-5 h-5 text-[#00E575]" />
-                    <h2 className="font-black text-white text-lg uppercase">One-Off Contests</h2>
+                    <h2 className="font-black text-white text-lg uppercase">Contest</h2>
                   </div>
                   <span className="text-[11px] text-[#00E575] font-bold bg-[#00E575]/10 px-2.5 py-1 border border-[#00E575]/30">
                     SINGLE ENTRY PER USER
@@ -363,7 +394,7 @@ export default function DashboardApp() {
                       className="p-6 bg-[#040705] border border-[#00E575]/30 hover:border-[#00E575] transition-all cursor-pointer group space-y-3 hover:bg-[#07110c]"
                     >
                       <div className="flex justify-between items-center font-mono text-xs">
-                        <span className="text-[#00E575] font-bold">CONTEST {c.id}</span>
+                        <span className="text-[#00E575] font-bold">CONTEST #{c.id}</span>
                         <span className="text-white font-black font-mono px-3 py-1 bg-[#00E575]/15 border border-[#00E575]/40">
                           {c.totalEscrow} MERIT ESCROW
                         </span>
@@ -389,7 +420,7 @@ export default function DashboardApp() {
                 <div className="flex items-center justify-between border-b border-[#00E575]/20 pb-4 font-mono">
                   <div className="flex items-center gap-2">
                     <FolderPlus className="w-5 h-5 text-emerald-400" />
-                    <h2 className="font-black text-white text-lg uppercase">Project Campaigns</h2>
+                    <h2 className="font-black text-white text-lg uppercase">Project Campaign</h2>
                   </div>
                   <span className="text-[11px] text-emerald-400 font-bold bg-emerald-500/10 px-2.5 py-1 border border-emerald-500/30">
                     CONTINUOUS POST TRACKING
@@ -455,6 +486,7 @@ export default function DashboardApp() {
                   />
                 </div>
 
+                {/* CLEAN DROPDOWN TYPE MENU: ONLY PROJECT CAMPAIGN OR CONTEST */}
                 <div>
                   <label className="block text-slate-300 mb-2 uppercase font-bold">TYPE</label>
                   <select
@@ -462,8 +494,8 @@ export default function DashboardApp() {
                     onChange={(e: any) => setNewCampaignType(e.target.value)}
                     className="w-full bg-[#040705] border border-[#00E575]/40 px-4 py-3.5 text-xs text-white focus:outline-none focus:border-[#00E575]"
                   >
-                    <option value="PROJECT_CAMPAIGN">Continuous Project Campaign (Track 50+ posts)</option>
-                    <option value="CONTEST">One-Off Contest (1 Submission per entry)</option>
+                    <option value="PROJECT_CAMPAIGN">Project Campaign</option>
+                    <option value="CONTEST">Contest</option>
                   </select>
                 </div>
               </div>
@@ -588,7 +620,7 @@ export default function DashboardApp() {
                 <span className="text-2xl font-black text-[#00E575]">{userAvgScore} / 100</span>
               </div>
               <div className="bg-[#07110c] border border-[#00E575]/30 p-4 space-y-1">
-                <span className="text-slate-400 text-[11px] block uppercase">Joined Campaigns</span>
+                <span className="text-slate-400 text-[11px] block uppercase">Active Campaigns</span>
                 <span className="text-2xl font-black text-white">{projects.length}</span>
               </div>
             </div>
@@ -619,42 +651,48 @@ export default function DashboardApp() {
                 Full Submission Log and AI Reasons
               </h3>
 
-              <div className="space-y-4">
-                {submissions.map((sub, idx) => (
-                  <div key={idx} className="p-4 bg-[#040705] border border-[#00E575]/30 space-y-3 font-mono text-xs">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#00E575]/20 pb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[#00E575] font-bold">ENTRY #{sub.id}</span>
-                        <span className="text-slate-400 font-bold">• {sub.discordHandle}</span>
+              {submissions.length === 0 ? (
+                <div className="p-8 text-center bg-[#07110c] border border-[#00E575]/30 text-slate-400 font-mono text-xs">
+                  No submissions filed yet. Select a Contest or Project Campaign to submit your X post link.
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {submissions.map((sub, idx) => (
+                    <div key={idx} className="p-4 bg-[#040705] border border-[#00E575]/30 space-y-3 font-mono text-xs">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#00E575]/20 pb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[#00E575] font-bold">ENTRY #{sub.id}</span>
+                          <span className="text-slate-400 font-bold">• {sub.discordHandle}</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <a
+                            href={sub.contentUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-[#00E575] underline font-bold"
+                          >
+                            View X Post Link
+                          </a>
+                          <span className={`px-2 py-0.5 font-bold border ${
+                            sub.finalScore >= 80 
+                              ? 'bg-[#00E575]/20 text-[#00E575] border-[#00E575]' 
+                              : 'bg-red-500/20 text-red-400 border-red-500'
+                          }`}>
+                            Score {sub.finalScore} / 100
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <a
-                          href={sub.contentUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-[#00E575] underline font-bold"
-                        >
-                          View X Post Link
-                        </a>
-                        <span className={`px-2 py-0.5 font-bold border ${
-                          sub.finalScore >= 80 
-                            ? 'bg-[#00E575]/20 text-[#00E575] border-[#00E575]' 
-                            : 'bg-red-500/20 text-red-400 border-red-500'
-                        }`}>
-                          Score {sub.finalScore} / 100
-                        </span>
-                      </div>
-                    </div>
 
-                    {/* AI Evaluation Reason */}
-                    {sub.failureReason && (
-                      <div className="bg-[#07110c] p-3 border border-[#00E575]/30 text-slate-300 leading-relaxed text-[11px] whitespace-pre-wrap">
-                        {sub.failureReason}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+                      {/* AI Evaluation Reason */}
+                      {sub.failureReason && (
+                        <div className="bg-[#07110c] p-3 border border-[#00E575]/30 text-slate-300 leading-relaxed text-[11px] whitespace-pre-wrap">
+                          {sub.failureReason}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
           </div>
@@ -670,7 +708,7 @@ export default function DashboardApp() {
             <div className="flex items-start justify-between border-b border-[#00E575]/20 pb-4">
               <div>
                 <span className="text-xs text-[#00E575] font-bold block mb-1">
-                  {activeModalItem.type === 'CONTEST' ? 'ONE-OFF CONTEST' : 'PROJECT CAMPAIGN'} {activeModalItem.category}
+                  {activeModalItem.type === 'CONTEST' ? 'CONTEST' : 'PROJECT CAMPAIGN'} {activeModalItem.category}
                 </span>
                 <h2 className="text-2xl font-black text-white uppercase">{activeModalItem.name}</h2>
                 <p className="text-xs text-slate-400 mt-1">{activeModalItem.description}</p>
@@ -829,51 +867,57 @@ export default function DashboardApp() {
             {modalTab === 'leaderboard' && (
               <div className="space-y-4">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse font-mono text-xs">
-                    <thead>
-                      <tr className="border-b border-[#00E575]/30 text-slate-400 bg-[#07110c]">
-                        <th className="py-3 px-3 uppercase">RANK</th>
-                        <th className="py-3 px-3 uppercase">DISCORD USERNAME</th>
-                        <th className="py-3 px-3 uppercase">WALLET</th>
-                        <th className="py-3 px-3 uppercase">X LINK</th>
-                        <th className="py-3 px-3 uppercase">AI SCORE</th>
-                        <th className="py-3 px-3 uppercase">OG STATUS</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#00E575]/15 text-xs">
-                      {leaderboard.map((item, idx) => (
-                        <tr key={idx} className={`hover:bg-[#00E575]/10 transition-colors ${item.isOgWinner ? 'bg-[#00E575]/5' : ''}`}>
-                          <td className="py-3 px-3 font-bold text-[#00E575]">#{idx + 1}</td>
-                          <td className="py-3 px-3 font-bold text-white flex items-center gap-1.5">
-                            <MessageSquare className="w-3.5 h-3.5 text-[#00E575]" />
-                            <span>{item.discordHandle || "discord_user#0001"}</span>
-                          </td>
-                          <td className="py-3 px-3 text-slate-300 font-medium">{item.submitter}</td>
-                          <td className="py-3 px-3">
-                            <a
-                              href={item.contentUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-[#00E575] underline font-bold flex items-center gap-1"
-                            >
-                              <span>View Post</span>
-                              <ExternalLink className="w-3 h-3" />
-                            </a>
-                          </td>
-                          <td className="py-3 px-3 font-bold text-white">{item.finalScore} / 100</td>
-                          <td className="py-3 px-3">
-                            {item.isOgWinner ? (
-                              <span className="px-2 py-0.5 bg-[#00E575] text-[#040705] font-black text-[10px] uppercase border border-[#00E575] flex items-center gap-1 w-max">
-                                <Crown className="w-3 h-3" /> OG QUALIFIED
-                              </span>
-                            ) : (
-                              <span className="text-slate-500 text-[11px]">CONTRIBUTOR</span>
-                            )}
-                          </td>
+                  {leaderboard.length === 0 ? (
+                    <div className="p-8 text-center bg-[#07110c] border border-[#00E575]/30 text-slate-400 font-mono text-xs">
+                      No submissions logged yet. Submit your X post link to rank on the leaderboard.
+                    </div>
+                  ) : (
+                    <table className="w-full text-left border-collapse font-mono text-xs">
+                      <thead>
+                        <tr className="border-b border-[#00E575]/30 text-slate-400 bg-[#07110c]">
+                          <th className="py-3 px-3 uppercase">RANK</th>
+                          <th className="py-3 px-3 uppercase">DISCORD USERNAME</th>
+                          <th className="py-3 px-3 uppercase">WALLET</th>
+                          <th className="py-3 px-3 uppercase">X LINK</th>
+                          <th className="py-3 px-3 uppercase">AI SCORE</th>
+                          <th className="py-3 px-3 uppercase">OG STATUS</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="divide-y divide-[#00E575]/15 text-xs">
+                        {leaderboard.map((item, idx) => (
+                          <tr key={idx} className={`hover:bg-[#00E575]/10 transition-colors ${item.isOgWinner ? 'bg-[#00E575]/5' : ''}`}>
+                            <td className="py-3 px-3 font-bold text-[#00E575]">#{idx + 1}</td>
+                            <td className="py-3 px-3 font-bold text-white flex items-center gap-1.5">
+                              <MessageSquare className="w-3.5 h-3.5 text-[#00E575]" />
+                              <span>{item.discordHandle || "discord_user#0001"}</span>
+                            </td>
+                            <td className="py-3 px-3 text-slate-300 font-medium">{item.submitter}</td>
+                            <td className="py-3 px-3">
+                              <a
+                                href={item.contentUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-[#00E575] underline font-bold flex items-center gap-1"
+                              >
+                                <span>View Post</span>
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
+                            </td>
+                            <td className="py-3 px-3 font-bold text-white">{item.finalScore} / 100</td>
+                            <td className="py-3 px-3">
+                              {item.isOgWinner ? (
+                                <span className="px-2 py-0.5 bg-[#00E575] text-[#040705] font-black text-[10px] uppercase border border-[#00E575] flex items-center gap-1 w-max">
+                                  <Crown className="w-3 h-3" /> OG QUALIFIED
+                                </span>
+                              ) : (
+                                <span className="text-slate-500 text-[11px]">CONTRIBUTOR</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
                 </div>
               </div>
             )}

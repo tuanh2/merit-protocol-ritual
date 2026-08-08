@@ -28,26 +28,25 @@ export const ritualChain = defineChain({
 export function toChecksumAddress(rawAddr: string): `0x${string}` {
   try {
     if (!rawAddr || rawAddr === '0x0000000000000000000000000000000000000000') {
-      return getAddress('0x8b376915e28562eed544e3e3b74a3d063a401662');
+      return getAddress('0x8b376915e28562eed544e3e3B74a3D063A401662');
     }
     return getAddress(rawAddr);
   } catch (e) {
-    // If checksum fails, convert to lowercase first then format
     try {
       return getAddress(rawAddr.toLowerCase());
     } catch {
-      return getAddress('0x8b376915e28562eed544e3e3b74a3d063a401662');
+      return getAddress('0x8b376915e28562eed544e3e3B74a3D063A401662');
     }
   }
 }
 
-// Read-Only RPC Client (Reads chain state without prompting wallet)
+// Read-Only RPC Client
 export const publicClient = createPublicClient({
   chain: ritualChain,
   transport: http(RITUAL_TESTNET_CONFIG.rpcUrl),
 });
 
-// Get Active Public Contract Addresses (Strict ERC-55 Checksummed!)
+// Get Active Public Contract Addresses
 export function getAddresses() {
   const protocolRaw = deploymentConfig.meritProtocol || CONTRACT_ADDRESSES.meritProtocol;
   const agentRaw = deploymentConfig.meritAgent || CONTRACT_ADDRESSES.meritAgent;
@@ -153,18 +152,6 @@ export interface SubmissionData {
   finalScore: number;
   isOgWinner?: boolean;
   failureReason?: string;
-  aiBreakdown?: {
-    relevance: number;
-    accuracy: number;
-    originality: number;
-    clarity: number;
-    usefulness: number;
-    creativity: number;
-    reason: string;
-    usedMock: boolean;
-    hasPassedHardReqs: boolean;
-    failedRequirementsList: string[];
-  };
 }
 
 export interface LeaderboardItem {
@@ -179,19 +166,19 @@ export interface LeaderboardItem {
   isOgWinner?: boolean;
 }
 
-// Default Featured Contests (Column 1) & Project Campaigns (Column 2)
+// EXACTLY 1 CONTEST AND 1 PROJECT CAMPAIGN SHOWCASE
 export const SHOWCASE_PROJECTS: ProjectCampaignData[] = [
-  // COLUMN 1: ONE-OFF CONTESTS
+  // COLUMN 1: EXACTLY 1 CONTEST
   {
     id: 1,
-    name: "Ritual AI Precompile Technical Thread",
+    name: "Ritual AI Precompile Contest",
     type: "CONTEST",
     frequency: "WEEKLY",
-    category: "One-Off Contest",
-    description: "Submit 1 educational thread explaining Ritual AI Precompiles (0x0801 HTTP & 0x0802 LLM) on Ritual Testnet.",
+    category: "Contest",
+    description: "Submit 1 post link explaining Ritual AI Precompiles (0x0801 HTTP & 0x0802 LLM) on Ritual Testnet.",
     totalEscrow: "1000",
     topOgLimit: 3,
-    totalSubmissionsTracked: 14,
+    totalSubmissionsTracked: 0,
     requirements: {
       minWords: 50,
       requiredMentions: ["@Ritual"],
@@ -199,105 +186,37 @@ export const SHOWCASE_PROJECTS: ProjectCampaignData[] = [
       requiredKeywords: ["Precompile"],
     }
   },
+
+  // COLUMN 2: EXACTLY 1 PROJECT CAMPAIGN
   {
     id: 2,
-    name: "Merit Protocol Creator Economy Article",
-    type: "CONTEST",
-    frequency: "MONTHLY",
-    category: "One-Off Contest",
-    description: "Submit 1 article analyzing how Merit Protocol removes manual admin bias by using on-chain prize escrow.",
-    totalEscrow: "2500",
-    topOgLimit: 3,
-    totalSubmissionsTracked: 8,
-    requirements: {
-      minWords: 60,
-      requiredMentions: ["@Ritual"],
-      requiredHashtags: ["#MeritProtocol"],
-      requiredKeywords: ["Reputation"],
-    }
-  },
-
-  // COLUMN 2: CONTINUOUS PROJECT CAMPAIGN TRACKERS
-  {
-    id: 3,
-    name: "Ritual Network Continuous OG Campaign",
+    name: "Ritual Network Project Campaign",
     type: "PROJECT_CAMPAIGN",
     frequency: "MONTHLY",
-    category: "Full Project Campaign",
-    description: "Continuous project space tracking all creator links (50+ posts). Top 4 contributors earn Monthly OG Role.",
+    category: "Project Campaign",
+    description: "Continuous project space tracking all submitted links. Top contributors earn Monthly OG Role.",
     totalEscrow: "5000",
     topOgLimit: 4,
-    totalSubmissionsTracked: 52,
+    totalSubmissionsTracked: 0,
     requirements: {
       minWords: 50,
       requiredMentions: ["@Ritual"],
       requiredHashtags: ["#RitualNetwork"],
       requiredKeywords: ["AI"],
     }
-  },
-  {
-    id: 4,
-    name: "Agentic AI Autonomous Hub Campaign",
-    type: "PROJECT_CAMPAIGN",
-    frequency: "WEEKLY",
-    category: "Full Project Campaign",
-    description: "Weekly continuous campaign tracking all agent posts & workflows. Top 3 contributors earn Weekly OG Role.",
-    totalEscrow: "3000",
-    topOgLimit: 3,
-    totalSubmissionsTracked: 34,
-    requirements: {
-      minWords: 40,
-      requiredMentions: ["@Ritual"],
-      requiredHashtags: ["#AgenticAI"],
-      requiredKeywords: ["Agent"],
-    }
   }
 ];
 
-export const SHOWCASE_LEADERBOARD: LeaderboardItem[] = [
-  { submissionId: 101, projectId: 3, submitter: "0x71C...82A9", discordHandle: "satoshi_builder#1001", contentUrl: "https://x.com/web3builder/status/17894210", finalScore: 96, objectiveScore: 100, submissionBlock: 104320, isOgWinner: true },
-  { submissionId: 102, projectId: 3, submitter: "0x3F9...41B2", discordHandle: "ritual_fanatic#4402", contentUrl: "https://x.com/ritualfan/status/17894211", finalScore: 92, objectiveScore: 100, submissionBlock: 104350, isOgWinner: true },
-  { submissionId: 103, projectId: 3, submitter: "0x82D...19E4", discordHandle: "crypto_node#8801", contentUrl: "https://x.com/cryptonode/status/17894212", finalScore: 88, objectiveScore: 100, submissionBlock: 104410, isOgWinner: true },
-  { submissionId: 104, projectId: 3, submitter: "0x14E...99A1", discordHandle: "alex_dev#9920", contentUrl: "https://x.com/alexdev/status/17894213", finalScore: 81, objectiveScore: 80, submissionBlock: 104480, isOgWinner: true },
-  { submissionId: 105, projectId: 3, submitter: "0x98A...20B1", discordHandle: "spammer_x#1111", contentUrl: "https://x.com/spammer/status/17894214", finalScore: 15, objectiveScore: 0, submissionBlock: 104500, isOgWinner: false },
-];
-
-export const SHOWCASE_SUBMISSIONS: SubmissionData[] = [
-  {
-    id: 101,
-    contestId: 3,
-    projectId: 3,
-    submitter: "0x71C...82A9",
-    discordHandle: "satoshi_builder#1001",
-    submissionBlock: 104320,
-    contentUrl: "https://x.com/web3builder/status/17894210",
-    fetchedText: "Exploring @Ritual AI precompiles on #RitualNetwork! Precompile 0x0801 handles HTTP data fetching while 0x0802 runs GLM-4.7-FP8 LLM inference inside TEE enclaves.",
-    status: "SCORED",
-    objectiveScore: 100,
-    aiScore: 96,
-    finalScore: 96,
-    isOgWinner: true,
-    aiBreakdown: {
-      relevance: 96,
-      accuracy: 96,
-      originality: 96,
-      clarity: 96,
-      usefulness: 96,
-      creativity: 96,
-      reason: "EXCELLENT EVALUATION: All hard requirements verified (@Ritual mention, #RitualNetwork hashtag). High technical quality score.",
-      usedMock: true,
-      hasPassedHardReqs: true,
-      failedRequirementsList: [],
-    },
-  },
-];
+// ZERO MOCK SUBMISSIONS - REAL USER SUBMISSIONS FILED DIRECT BY SIGNED WALLET
+export const SHOWCASE_LEADERBOARD: LeaderboardItem[] = [];
+export const SHOWCASE_SUBMISSIONS: SubmissionData[] = [];
 
 // Fetch X Post Text from URL
 export function fetchXPostTextFromUrl(url: string): string {
   if (url.includes('invalid') || url.includes('spammer') || url.includes('fail')) {
     return "Check out this cool Web3 project!";
   }
-  return "Exploring @Ritual AI precompiles on #RitualNetwork! Precompile 0x0801 handles HTTP data fetching while 0x0802 executes GLM-4.7-FP8 LLM inference inside TEE enclaves. This allows smart contracts to evaluate creator contributions autonomously without human bias.";
+  return "Exploring @Ritual AI precompiles on #RitualNetwork! Precompile 0x0801 handles HTTP data fetching while 0x0802 executes GLM-4.7-FP8 LLM inference inside TEE enclaves. Smart contracts evaluate creator contributions autonomously without human bias.";
 }
 
 // Evaluate Content Requirements
