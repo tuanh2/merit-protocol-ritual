@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ShieldCheck, 
   Cpu, 
@@ -14,13 +14,89 @@ import {
   Search,
   Check,
   Layers,
-  Terminal
+  Terminal,
+  Activity
 } from 'lucide-react';
+import GreenSmokeCursor from '../components/GreenSmokeCursor';
 
 export default function LandingPage() {
+  const [introFinished, setIntroFinished] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [introStepText, setIntroStepText] = useState("INITIALIZING RITUAL ENCLAVE...");
+
+  // Intro Counter & Terminal Boot Sequence (taigondao.xyz style)
+  useEffect(() => {
+    const steps = [
+      { p: 25, text: "CONNECTING TO RITUAL TESTNET #1979..." },
+      { p: 50, text: "LOADING PRECOMPILES 0x0801 (HTTP) & 0x0802 (LLM)..." },
+      { p: 75, text: "VERIFYING TEE ENCLAVE SIGNATURES (GLM-4.7-FP8)..." },
+      { p: 100, text: "MERIT PROTOCOL CORE SYSTEM ONLINE" },
+    ];
+
+    let current = 0;
+    const interval = setInterval(() => {
+      current += 2;
+      setProgress(current);
+
+      if (current >= 25 && current < 50) setIntroStepText(steps[0].text);
+      if (current >= 50 && current < 75) setIntroStepText(steps[1].text);
+      if (current >= 75 && current < 100) setIntroStepText(steps[2].text);
+      if (current >= 100) {
+        setIntroStepText(steps[3].text);
+        clearInterval(interval);
+        setTimeout(() => setIntroFinished(true), 600);
+      }
+    }, 25);
+
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <div className="min-h-screen bg-[#040705] text-slate-100 font-sans relative overflow-hidden select-none ritual-bg-grid-sharp">
       
+      {/* Interactive Green Smoke Cursor Particle Canvas */}
+      <GreenSmokeCursor />
+
+      {/* Intro Screen Animation (taigondao.xyz style) */}
+      {!introFinished && (
+        <div className="fixed inset-0 z-50 bg-[#040705] flex flex-col items-center justify-center p-6 font-mono border-4 border-[#00E575]/40 transition-opacity duration-700">
+          <div className="max-w-md w-full space-y-6">
+            <div className="flex items-center gap-3 border-b border-[#00E575]/30 pb-4">
+              <div className="w-8 h-8 bg-[#00E575] text-[#040705] flex items-center justify-center font-bold">
+                <ShieldCheck className="w-5 h-5 text-[#040705]" />
+              </div>
+              <span className="font-black text-xl text-white uppercase tracking-wider">
+                MERIT<span className="text-[#00E575]">.SYS</span>
+              </span>
+            </div>
+
+            <div className="space-y-2 text-xs">
+              <div className="flex justify-between text-[#00E575] font-bold">
+                <span>SYSTEM BOOT</span>
+                <span>{progress}%</span>
+              </div>
+              <div className="w-full h-3 bg-[#07110c] border border-[#00E575]/40 p-0.5">
+                <div 
+                  className="h-full bg-[#00E575] transition-all duration-75 shadow-[0_0_15px_#00E575]" 
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+            </div>
+
+            <div className="bg-[#07110c] border border-[#00E575]/30 p-3 text-[11px] text-[#00E575] font-mono h-16 flex items-center">
+              <span>{`> ${introStepText}`}</span>
+            </div>
+
+            <button
+              onClick={() => setIntroFinished(true)}
+              className="w-full py-2 bg-[#00E575]/10 hover:bg-[#00E575]/20 text-[#00E575] border border-[#00E575]/40 text-xs font-bold uppercase tracking-widest transition-colors"
+            >
+              [ SKIP INTRO ]
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Top Technical Status Banner */}
       <div className="bg-[#07110c] border-b border-[#00E575]/30 py-2.5 text-center text-xs font-mono text-[#00E575] flex items-center justify-center gap-3">
         <span className="w-2 h-2 rounded-none bg-[#00E575] animate-ping" />
@@ -33,7 +109,7 @@ export default function LandingPage() {
       {/* Navigation Bar - Sharp Square Geometric */}
       <header className="relative z-30 max-w-[1400px] mx-auto flex items-center justify-between px-6 lg:px-12 pt-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-none bg-[#00E575] text-[#040705] flex items-center justify-center font-black border border-[#00E575]">
+          <div className="w-10 h-10 bg-[#00E575] text-[#040705] flex items-center justify-center font-black border border-[#00E575]">
             <ShieldCheck className="w-6 h-6 text-[#040705]" />
           </div>
           <span className="font-black text-2xl tracking-tighter text-white uppercase font-mono">
@@ -56,9 +132,9 @@ export default function LandingPage() {
         </a>
       </header>
 
-      {/* Hero Section - Sharp Geometric & Technical */}
+      {/* Hero Section - Cybernetic & Green Smoke Theme */}
       <section className="relative z-10 max-w-[1300px] mx-auto flex flex-col items-center text-center px-6 pt-16 lg:pt-24 pb-16">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-[#08140e] border border-[#00E575]/40 text-[#00E575] text-xs font-mono font-bold uppercase tracking-wider mb-8">
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-[#08140e] border border-[#00E575]/40 text-[#00E575] text-xs font-mono font-bold uppercase tracking-wider mb-8 shadow-[0_0_20px_rgba(0,229,117,0.2)]">
           <Terminal className="w-4 h-4 text-[#00E575]" />
           <span>AUTONOMOUS REPUTATION & CONTEST REWARD PROTOCOL</span>
         </div>
