@@ -314,23 +314,27 @@ export async function fetchChainStatus() {
   }
 }
 
-// Switch/Add Ritual Testnet to User's MetaMask
+// Switch/Add Ritual Testnet Automatically to User's MetaMask
 export async function switchOrAddRitualChain() {
   const ethereum = (window as any).ethereum;
   if (!ethereum) throw new Error("MetaMask is not installed.");
 
+  const chainIdHex = `0x${RITUAL_TESTNET_CONFIG.chainId.toString(16)}`; // 0x7bb
+
   try {
+    // 1. Try switching to Ritual Testnet
     await ethereum.request({
       method: 'wallet_switchEthereumChain',
-      params: [{ chainId: `0x${RITUAL_TESTNET_CONFIG.chainId.toString(16)}` }],
+      params: [{ chainId: chainIdHex }],
     });
   } catch (switchError: any) {
-    if (switchError.code === 4902) {
+    // 2. If network doesn't exist in MetaMask (error 4902 or unrecognized chain), add it automatically
+    try {
       await ethereum.request({
         method: 'wallet_addEthereumChain',
         params: [
           {
-            chainId: `0x${RITUAL_TESTNET_CONFIG.chainId.toString(16)}`,
+            chainId: chainIdHex,
             chainName: RITUAL_TESTNET_CONFIG.chainName,
             rpcUrls: [RITUAL_TESTNET_CONFIG.rpcUrl],
             nativeCurrency: RITUAL_TESTNET_CONFIG.nativeCurrency,
@@ -338,8 +342,9 @@ export async function switchOrAddRitualChain() {
           },
         ],
       });
-    } else {
-      throw switchError;
+    } catch (addError: any) {
+      console.error("User rejected adding network:", addError);
+      throw addError;
     }
   }
 }
