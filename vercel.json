@@ -1,19 +1,7 @@
 {
-  "version": 2,
-  "buildCommand": "cd frontend && npm install && npm run build",
-  "outputDirectory": "frontend/dist",
-  "routes": [
-    {
-      "src": "/app",
-      "dest": "/app.html"
-    },
-    {
-      "src": "/app.html",
-      "dest": "/app.html"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/$1"
-    }
+  "rewrites": [
+    { "source": "/app", "destination": "/app.html" },
+    { "source": "/app.html", "destination": "/app.html" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
