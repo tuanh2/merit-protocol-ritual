@@ -69,7 +69,8 @@ export const MERIT_PROTOCOL_ABI = [
     stateMutability: 'nonpayable',
     inputs: [
       { name: 'contestId', type: 'uint256' },
-      { name: 'contentUrl', type: 'string' }
+      { name: 'contentUrl', type: 'string' },
+      { name: 'fetchedText', type: 'string' }
     ],
     outputs: [{ type: 'uint256' }]
   },
@@ -417,7 +418,7 @@ export async function switchOrAddRitualChain() {
 }
 
 // Submit Entry On-Chain (Strict Checksummed Contract Address)
-export async function submitEntryOnChain(contestId: number, contentUrl: string, userAccount: string) {
+export async function submitEntryOnChain(contestId: number, contentUrl: string, fetchedText: string, userAccount: string) {
   const ethereum = (window as any).ethereum;
   if (!ethereum) throw new Error("MetaMask is not installed.");
   
@@ -437,12 +438,75 @@ export async function submitEntryOnChain(contestId: number, contentUrl: string, 
     address: addresses.protocol,
     abi: MERIT_PROTOCOL_ABI,
     functionName: 'submitContestEntry',
-    args: [BigInt(contestId), contentUrl],
+    args: [BigInt(contestId), contentUrl, fetchedText],
     maxPriorityFeePerGas: parseEther('0.0000000015'),
     maxFeePerGas: parseEther('0.000000003'),
   });
 
   return hash;
+}
+
+// RitualWallet ABI & Helpers for real on-chain LLM execution
+export const RITUAL_WALLET_ABI = [
+  {
+    name: 'deposit',
+    type: 'function',
+    stateMutability: 'payable',
+    inputs: [{ name: 'lockDuration', type: 'uint256' }],
+    outputs: []
+  },
+  {
+    name: 'balanceOf',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [{ name: 'user', type: 'address' }],
+    outputs: [{ type: 'uint256' }]
+  }
+] as const;
+
+export async function depositToRitualWallet(amountEth: string, lockBlocks: number, userAccount: string) {
+  const ethereum = (window as any).ethereum;
+  if (!ethereum) throw new Error("MetaMask is not installed.");
+  
+  await switchOrAddRitualChain();
+  const accountHex = toChecksumAddress(userAccount);
+
+  const walletClient = createWalletClient({
+    account: accountHex,
+    chain: ritualChain,
+    transport: custom(ethereum),
+  });
+
+  const hash = await walletClient.writeContract({
+    account: accountHex,
+    chain: ritualChain,
+    address: '0x532F0dF0896F353d8C3DD8cc134e8129DA2a3948',
+    abi: RITUAL_WALLET_ABI as any,
+    functionName: 'deposit',
+    args: [BigInt(lockBlocks)],
+    value: parseEther(amountEth),
+    maxPriorityFeePerGas: parseEther('0.0000000015'),
+    maxFeePerGas: parseEther('0.000000003'),
+  } as any);
+
+  return hash;
+}
+
+export async function checkRitualWalletBalance(userAccount: string): Promise<string> {
+  if (!userAccount) return "0.0";
+  const accountHex = toChecksumAddress(userAccount);
+  try {
+    const balance = await publicClient.readContract({
+      address: '0x532F0dF0896F353d8C3DD8cc134e8129DA2a3948',
+      abi: RITUAL_WALLET_ABI as any,
+      functionName: 'balanceOf',
+      args: [accountHex],
+    } as any);
+    return formatEther(balance as bigint);
+  } catch (e) {
+    console.error("Failed to fetch RitualWallet balance:", e);
+    return "0.0";
+  }
 }
 
 // Create Contest On-Chain
