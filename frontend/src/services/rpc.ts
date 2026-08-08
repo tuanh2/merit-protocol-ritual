@@ -28,14 +28,14 @@ export const ritualChain = defineChain({
 export function toChecksumAddress(rawAddr: string): `0x${string}` {
   try {
     if (!rawAddr || rawAddr === '0x0000000000000000000000000000000000000000') {
-      return getAddress('0x8b376915e28562eed544e3e3B74a3D063A401662');
+      return getAddress('0x8b376915e28562eed544e3e3b74a3d063a401662');
     }
     return getAddress(rawAddr);
   } catch (e) {
     try {
       return getAddress(rawAddr.toLowerCase());
     } catch {
-      return getAddress('0x8b376915e28562eed544e3e3B74a3D063A401662');
+      return getAddress('0x8b376915e28562eed544e3e3b74a3d063a401662');
     }
   }
 }
@@ -207,7 +207,7 @@ export const SHOWCASE_PROJECTS: ProjectCampaignData[] = [
   }
 ];
 
-// ZERO MOCK SUBMISSIONS - REAL USER SUBMISSIONS FILED DIRECT BY SIGNED WALLET
+// ZERO MOCK SUBMISSIONS
 export const SHOWCASE_LEADERBOARD: LeaderboardItem[] = [];
 export const SHOWCASE_SUBMISSIONS: SubmissionData[] = [];
 
@@ -219,7 +219,7 @@ export function fetchXPostTextFromUrl(url: string): string {
   return "Exploring @Ritual AI precompiles on #RitualNetwork! Precompile 0x0801 handles HTTP data fetching while 0x0802 executes GLM-4.7-FP8 LLM inference inside TEE enclaves. Smart contracts evaluate creator contributions autonomously without human bias.";
 }
 
-// Evaluate Content Requirements
+// Evaluate Content Requirements (ONLY RETURNS AI FEEDBACK REASONS WITHOUT FETCHED PREVIEW TEXT)
 export function evaluateSubmissionContent(text: string, reqs: { minWords: number; requiredMentions: string[]; requiredHashtags: string[]; requiredKeywords: string[]; }) {
   const failed: string[] = [];
 
@@ -256,7 +256,7 @@ export function evaluateSubmissionContent(text: string, reqs: { minWords: number
       hasPassedHardReqs: false,
       failedRequirementsList: failed,
       fetchedText: text,
-      reason: `PENALIZED (LOW SCORE: 15/100): Fetched X post content failed mandatory requirements!\n• ${failed.join('\n• ')}\n\nFetched Content Preview: "${text}"`
+      reason: `PENALIZED (LOW SCORE: 15/100): Fetched X post content failed mandatory requirements!\n• ${failed.join('\n• ')}`
     };
   }
 
@@ -271,7 +271,7 @@ export function evaluateSubmissionContent(text: string, reqs: { minWords: number
     hasPassedHardReqs: true,
     failedRequirementsList: [],
     fetchedText: text,
-    reason: `EXCELLENT EVALUATION (HIGH SCORE: ${finalAi}/100): Fetched X post content verified successfully!\n✓ Mention ${reqs.requiredMentions.join(', ')} confirmed.\n✓ Hashtag ${reqs.requiredHashtags.join(', ')} confirmed.\n✓ Word count: ${words.length} words (Min: ${reqs.minWords}).\n\nFetched Content Preview: "${text}"`
+    reason: `EXCELLENT EVALUATION (HIGH SCORE: ${finalAi}/100): Fetched X post content verified successfully!\n✓ Mention ${reqs.requiredMentions.join(', ')} confirmed.\n✓ Hashtag ${reqs.requiredHashtags.join(', ')} confirmed.\n✓ Word count: ${words.length} words (Min: ${reqs.minWords}).`
   };
 }
 
