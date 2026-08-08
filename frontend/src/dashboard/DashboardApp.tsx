@@ -992,6 +992,48 @@ export default function DashboardApp() {
                   {activeModalItem.type === 'CONTEST' ? (activeModalItem.item as ContestData).title : (activeModalItem.item as CampaignData).name}
                 </h2>
                 <p className="text-xs text-slate-400 mt-1">{activeModalItem.item.description}</p>
+
+                {/* CONFIDENTIAL 20-POINT BAREM CRITERIA - VISIBLE EXCLUSIVELY TO CREATOR WALLET OR PROJECT OWNER MODE */}
+                {(activeMode === 'owner' || (account && activeModalItem.item.creatorWallet && account.toLowerCase() === activeModalItem.item.creatorWallet.toLowerCase())) && (
+                  <div className="mt-4 p-4 bg-[#07110c] border border-[#00E575]/40 space-y-2">
+                    <div className="flex items-center justify-between text-[#00E575] font-bold text-xs uppercase border-b border-[#00E575]/20 pb-1.5">
+                      <span>CONFIDENTIAL BAREM RUBRIC (20 CRITERIA)</span>
+                      <span className="bg-[#00E575] text-[#040705] px-2 py-0.5 text-[10px] font-black">CREATOR WALLET ACCESS ONLY</span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 italic">
+                      These 20 evaluation standards are kept hidden from general submitters to prevent prompt gaming. Only your creator wallet ({activeModalItem.item.creatorWallet || "Owner Wallet"}) can view this rubric:
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-2 text-[11px] text-slate-200 font-mono">
+                      {(activeModalItem.item.hiddenBaremCriteria || [
+                        "1. Technical Accuracy on Precompile 0x0801 HTTP fetching",
+                        "2. Technical Accuracy on Precompile 0x0802 LLM inference",
+                        "3. Correct mention of GLM-4.7-FP8 execution in TEE",
+                        "4. Mandatory tag @Ritual verified",
+                        "5. Mandatory hashtag #RitualTestnet verified",
+                        "6. Keyword 'Precompile' present in post body",
+                        "7. Word count >= 50 words without filler",
+                        "8. Quality of decentralized AI explanation",
+                        "9. Absence of misleading Web3 claims",
+                        "10. Clarity of Smart Contract escrow concept",
+                        "11. Originality of creator phrasing",
+                        "12. Explanation of zero admin bias evaluation",
+                        "13. Formatting & readability structure",
+                        "14. Mention of Ritual Testnet Chain ID 1979",
+                        "15. Proof of developer engagement",
+                        "16. Absence of automated bot spam patterns",
+                        "17. Alignment with Ritual AI architecture docs",
+                        "18. Value contribution to Ritual ecosystem",
+                        "19. Explanation of TEE enclave isolation",
+                        "20. Absence of promotional clickbait language"
+                      ]).map((criterion, idx) => (
+                        <div key={idx} className="flex items-center gap-1.5 bg-[#040705] p-1.5 border border-[#00E575]/20">
+                          <span className="text-[#00E575] font-bold">•</span>
+                          <span className="truncate">{criterion}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <button
