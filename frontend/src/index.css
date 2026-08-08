@@ -3,36 +3,72 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --ritual-green: #00E575;
+    --ritual-green-hover: #00C865;
+    --ritual-green-dark: #046A38;
+    --ritual-bg: #060a08;
+    --ritual-card-bg: rgba(14, 24, 19, 0.75);
+  }
+
   body {
-    @apply bg-slate-950 text-slate-100 font-sans antialiased selection:bg-cyan-500 selection:text-slate-950;
+    background-color: #050807;
+    color: #f1f5f9;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    overflow-x: hidden;
+    selection-background-color: #00E575;
+    selection-color: #050807;
   }
 }
 
-.glass-panel {
-  background: rgba(15, 23, 42, 0.75);
+/* Custom Ritual Emerald Styling */
+.ritual-bg-grid {
+  background-size: 40px 40px;
+  background-image: 
+    linear-gradient(to right, rgba(0, 229, 117, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 229, 117, 0.04) 1px, transparent 1px);
+}
+
+.glass-card-emerald {
+  background: rgba(10, 18, 14, 0.7);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(0, 229, 117, 0.15);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.glass-card {
-  background: rgba(30, 41, 59, 0.5);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  transition: all 0.2s ease-in-out;
+.glass-card-emerald:hover {
+  background: rgba(14, 26, 20, 0.85);
+  border-color: rgba(0, 229, 117, 0.4);
+  box-shadow: 0 12px 40px -10px rgba(0, 229, 117, 0.2);
+  transform: translateY(-2px);
 }
 
-.glass-card:hover {
-  background: rgba(30, 41, 59, 0.8);
-  border-color: rgba(6, 182, 212, 0.3);
-  box-shadow: 0 8px 32px 0 rgba(6, 182, 212, 0.1);
+.ritual-gradient-text {
+  background: linear-gradient(135deg, #ffffff 0%, #00E575 50%, #10B981 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
-.gradient-text {
-  @apply bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-indigo-400 to-violet-400;
+.ritual-green-glow {
+  box-shadow: 0 0 35px -5px rgba(0, 229, 117, 0.3);
 }
 
-.gradient-bg {
-  @apply bg-gradient-to-r from-cyan-500 via-indigo-600 to-violet-600;
+.btn-ritual-primary {
+  background: #00E575;
+  color: #050807;
+  font-weight: 700;
+  border-radius: 9999px;
+  transition: all 0.2s ease;
+  box-shadow: 0 10px 30px -5px rgba(0, 229, 117, 0.35);
+}
+
+.btn-ritual-primary:hover {
+  background: #10B981;
+  box-shadow: 0 12px 35px 0 rgba(0, 229, 117, 0.5);
+  transform: scale(1.02);
+}
+
+.btn-ritual-primary:active {
+  transform: scale(0.98);
 }
