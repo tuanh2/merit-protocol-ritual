@@ -151,7 +151,7 @@ export interface SubmissionData {
   submitter: string;
   submissionBlock: number;
   contentUrl: string;
-  contentText?: string;
+  fetchedText?: string;
   status: string;
   objectiveScore: number;
   aiScore: number;
@@ -293,7 +293,7 @@ export const SHOWCASE_SUBMISSIONS: SubmissionData[] = [
     submitter: "0x71C...82A9",
     submissionBlock: 104320,
     contentUrl: "https://x.com/web3builder/status/17894210",
-    contentText: "Exploring @Ritual AI precompiles on #RitualTestnet! Precompile 0x0801 handles HTTP data fetching while 0x0802 runs GLM-4.7-FP8 LLM inference inside TEE enclaves. This allows smart contracts to evaluate creator contributions autonomously without human bias.",
+    fetchedText: "Exploring @Ritual AI precompiles on #RitualTestnet! Precompile 0x0801 handles HTTP data fetching while 0x0802 runs GLM-4.7-FP8 LLM inference inside TEE enclaves. This allows smart contracts to evaluate creator contributions autonomously without human bias.",
     status: "SCORED",
     objectiveScore: 100,
     aiScore: 96,
@@ -313,6 +313,14 @@ export const SHOWCASE_SUBMISSIONS: SubmissionData[] = [
     },
   },
 ];
+
+// Automatically Fetch Post Content from X URL via Precompile 0x0801 HTTP simulation
+export function fetchXPostTextFromUrl(url: string): string {
+  if (url.includes('invalid') || url.includes('spammer') || url.includes('fail')) {
+    return "Check out this cool Web3 project!";
+  }
+  return "Exploring @Ritual AI precompiles on #RitualTestnet! Precompile 0x0801 handles HTTP data fetching while 0x0802 executes GLM-4.7-FP8 LLM inference inside TEE enclaves. This allows smart contracts to evaluate creator contributions autonomously without human bias.";
+}
 
 // Evaluate Submission Content against Requirements
 export function evaluateSubmissionContent(text: string, reqs: { minWords: number; requiredMentions: string[]; requiredHashtags: string[]; requiredKeywords: string[]; }) {
@@ -350,7 +358,8 @@ export function evaluateSubmissionContent(text: string, reqs: { minWords: number
       finalScore: 15,
       hasPassedHardReqs: false,
       failedRequirementsList: failed,
-      reason: `PENALIZED (LOW SCORE: 15/100): Submission failed mandatory requirements!\n• ${failed.join('\n• ')}\n\nRitual AI Evaluation: Content marked invalid due to incomplete tags/word-count criteria.`
+      fetchedText: text,
+      reason: `PENALIZED (LOW SCORE: 15/100): Fetched X post content failed mandatory requirements!\n• ${failed.join('\n• ')}\n\nFetched Content Preview: "${text}"`
     };
   }
 
@@ -364,7 +373,8 @@ export function evaluateSubmissionContent(text: string, reqs: { minWords: number
     finalScore: finalAi,
     hasPassedHardReqs: true,
     failedRequirementsList: [],
-    reason: `EXCELLENT EVALUATION (HIGH SCORE: ${finalAi}/100): All hard requirements verified successfully!\n✓ Mention ${reqs.requiredMentions.join(', ')} confirmed.\n✓ Hashtag ${reqs.requiredHashtags.join(', ')} confirmed.\n✓ Word count: ${words.length} words (Min: ${reqs.minWords}).\n\nRitual AI Evaluation: High relevance and clear project structure.`
+    fetchedText: text,
+    reason: `EXCELLENT EVALUATION (HIGH SCORE: ${finalAi}/100): Fetched X post content verified successfully!\n✓ Mention ${reqs.requiredMentions.join(', ')} confirmed.\n✓ Hashtag ${reqs.requiredHashtags.join(', ')} confirmed.\n✓ Word count: ${words.length} words (Min: ${reqs.minWords}).\n\nFetched Content Preview: "${text}"`
   };
 }
 

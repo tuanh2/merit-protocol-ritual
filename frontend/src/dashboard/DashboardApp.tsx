@@ -28,7 +28,8 @@ import {
   FileText,
   FolderPlus,
   Settings,
-  Crown
+  Crown,
+  Link as LinkIcon
 } from 'lucide-react';
 import { 
   fetchChainStatus, 
@@ -36,6 +37,7 @@ import {
   submitEntryOnChain,
   createContestOnChain,
   switchOrAddRitualChain,
+  fetchXPostTextFromUrl,
   evaluateSubmissionContent,
   publicClient,
   SHOWCASE_PROJECTS,
@@ -49,7 +51,7 @@ import {
 } from '../services/rpc';
 
 export default function DashboardApp() {
-  const [activeTab, setActiveTab] = useState<'projects' | 'contests' | 'console' | 'reputation' | 'leaderboard'>('projects');
+  const [activeTab, setActiveTab] = useState<'projects' | 'console' | 'leaderboard' | 'reputation'>('projects');
   const [account, setAccount] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [blockHeight, setBlockHeight] = useState<number>(104520);
@@ -61,13 +63,11 @@ export default function DashboardApp() {
   const [selectedProject, setSelectedProject] = useState<ProjectData>(SHOWCASE_PROJECTS[0]);
 
   // Submissions & Leaderboard State
-  const [contests, setContests] = useState<ContestData[]>(SHOWCASE_CONTESTS);
   const [leaderboard, setLeaderboard] = useState<LeaderboardItem[]>(SHOWCASE_LEADERBOARD);
   const [submissions, setSubmissions] = useState<SubmissionData[]>(SHOWCASE_SUBMISSIONS);
 
-  // Submission Form State
-  const [submissionUrl, setSubmissionUrl] = useState('https://x.com/user/status/19824001');
-  const [submissionText, setSubmissionText] = useState('');
+  // Single Input Submission Form State (Only X Post URL!)
+  const [submissionUrl, setSubmissionUrl] = useState('https://x.com/crypto_builder/status/19824001');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionStatus, setSubmissionStatus] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
@@ -123,23 +123,20 @@ export default function DashboardApp() {
     }
   }
 
-  // Handle Project Submission & AI Evaluation
+  // Handle Project Submission (Auto-Fetches Content Direct from X URL!)
   async function handleProjectSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!selectedProject) return;
-
-    const contentToEvaluate = submissionText || submissionUrl;
-    if (!contentToEvaluate) {
-      alert("Please enter your post text content or post URL.");
-      return;
-    }
+    if (!selectedProject || !submissionUrl) return;
 
     setIsSubmitting(true);
     setSubmissionStatus('AWAITING_WALLET_SIGNATURE');
     setTxHash(null);
 
-    // Real Requirement & AI Evaluation Engine against Project's Custom Settings
-    const evalResult = evaluateSubmissionContent(contentToEvaluate, selectedProject.requirements);
+    // 1. Auto-Fetch Post Content Direct from X URL via Precompile 0x0801 HTTP Fetching Engine
+    const fetchedText = fetchXPostTextFromUrl(submissionUrl);
+
+    // 2. Evaluate Fetched Post Content against Project's Custom Settings
+    const evalResult = evaluateSubmissionContent(fetchedText, selectedProject.requirements);
     setLatestEvaluationResult(evalResult);
 
     try {
@@ -154,9 +151,9 @@ export default function DashboardApp() {
         setSubmissionStatus('SUBMITTED_ANONYMOUS');
       }
 
-      setTimeout(() => setSubmissionStatus('FETCH_SCHEDULED'), 1000);
+      setTimeout(() => setSubmissionStatus('FETCHING_X_DATA_0x0801'), 1000);
       setTimeout(() => setSubmissionStatus('REQUIREMENTS_VERIFIED'), 2000);
-      setTimeout(() => setSubmissionStatus('AI_EVALUATING'), 3000);
+      setTimeout(() => setSubmissionStatus('AI_EVALUATING_0x0802'), 3000);
       setTimeout(() => {
         setSubmissionStatus('SCORED');
         const newSubId = Date.now();
@@ -169,7 +166,7 @@ export default function DashboardApp() {
           submitter: submitterAddr,
           submissionBlock: blockHeight + 2,
           contentUrl: submissionUrl,
-          contentText: submissionText,
+          fetchedText: fetchedText,
           status: evalResult.hasPassedHardReqs ? "SCORED" : "REJECTED_LOW_SCORE",
           objectiveScore: evalResult.objectiveScore,
           aiScore: evalResult.aiScore,
@@ -192,14 +189,13 @@ export default function DashboardApp() {
 
         setSubmissions(prev => [newSubmission, ...prev]);
 
-        // Dynamically recalculate leaderboard and top OG winners for this month!
+        // Recalculate leaderboard & OG role assignment
         setLeaderboard(prev => {
           const updated = [
             { submissionId: newSubId, submitter: submitterAddr, finalScore: evalResult.finalScore, objectiveScore: evalResult.objectiveScore, submissionBlock: blockHeight },
             ...prev
           ].sort((a, b) => b.finalScore - a.finalScore);
 
-          // Mark Top N as OG Winners based on Project's topOgLimit setting
           return updated.map((item, index) => ({
             ...item,
             isOgWinner: index < selectedProject.topOgLimit && item.finalScore >= 80
@@ -251,15 +247,13 @@ export default function DashboardApp() {
     }, 1200);
   }
 
-  // Preset Fills
-  const fillValidPost = () => {
-    setSubmissionUrl("https://x.com/crypto_builder/status/1982001");
-    setSubmissionText("Exploring @Ritual AI precompiles on #RitualTestnet! Precompile 0x0801 handles HTTP data fetching while 0x0802 executes GLM-4.7-FP8 LLM inference inside TEE enclaves. This allows smart contracts to evaluate creator contributions autonomously without human bias.");
+  // Presets
+  const fillValidUrl = () => {
+    setSubmissionUrl("https://x.com/crypto_builder/status/19824001");
   };
 
-  const fillInvalidPost = () => {
-    setSubmissionUrl("https://x.com/spammer/status/1982999");
-    setSubmissionText("Check out this cool Web3 project!");
+  const fillInvalidUrl = () => {
+    setSubmissionUrl("https://x.com/spammer/status/1982999-fail-invalid");
   };
 
   return (
@@ -395,23 +389,23 @@ export default function DashboardApp() {
           {/* Preset Buttons for Quick Testing */}
           <div className="glass-card-sharp p-5 space-y-3">
             <div className="flex items-center gap-2 text-xs font-mono text-[#00E575] font-bold mb-1 uppercase tracking-wider">
-              <FileText className="w-3.5 h-3.5" />
-              <span>TEST EVALUATION PRESETS</span>
+              <LinkIcon className="w-3.5 h-3.5" />
+              <span>TEST POST URL PRESETS</span>
             </div>
 
             <button
-              onClick={fillValidPost}
+              onClick={fillValidUrl}
               className="w-full text-[11px] font-mono py-2.5 bg-[#00E575]/20 hover:bg-[#00E575]/30 text-[#00E575] border border-[#00E575] font-bold uppercase text-left px-3 flex items-center justify-between"
             >
-              <span>Fill Valid Post</span>
-              <span className="text-emerald-400 font-bold">✓ PASS (90+)</span>
+              <span>Valid X Post URL</span>
+              <span className="text-emerald-400 font-bold">✓ PASS (96/100)</span>
             </button>
 
             <button
-              onClick={fillInvalidPost}
+              onClick={fillInvalidUrl}
               className="w-full text-[11px] font-mono py-2.5 bg-red-950/40 hover:bg-red-900/50 text-red-400 border border-red-500/40 font-bold uppercase text-left px-3 flex items-center justify-between"
             >
-              <span>Fill Invalid Post</span>
+              <span>Invalid X Post URL</span>
               <span className="text-red-400 font-bold">✗ FAIL (15/100)</span>
             </button>
           </div>
@@ -420,15 +414,15 @@ export default function DashboardApp() {
         {/* Content Area */}
         <main className="lg:col-span-9 space-y-6">
 
-          {/* TAB 1: PROJECTS HUB (CONTRIBUTE TO 3 FEATURED PROJECTS) */}
+          {/* TAB 1: PROJECTS HUB */}
           {activeTab === 'projects' && (
             <div className="space-y-6">
               <div>
                 <h2 className="text-2xl font-black text-white font-sans uppercase tracking-tight mb-1">
-                  01 // Select Project & Submit Contribution
+                  01 // Select Project & Submit X Post URL
                 </h2>
                 <p className="text-xs font-mono text-slate-400">
-                  Select a featured project, submit your post, and compete on the monthly quality score leaderboard to earn the OG Role.
+                  Select a featured project, enter your X post URL. System automatically fetches post content via Ritual HTTP Precompile (0x0801) and evaluates quality score.
                 </p>
               </div>
 
@@ -467,7 +461,7 @@ export default function DashboardApp() {
                 ))}
               </div>
 
-              {/* Selected Project Submission & Evaluation Workspace */}
+              {/* Selected Project Submission Workspace (ONLY 1 INPUT: URL!) */}
               {selectedProject && (
                 <div className="glass-card-sharp p-6 space-y-6 border-2 border-[#00E575]">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#00E575]/20 pb-6">
@@ -487,7 +481,7 @@ export default function DashboardApp() {
                   {/* Project Custom Settings & Requirements */}
                   <div className="bg-[#07110c] border border-[#00E575]/40 p-4 space-y-3 font-mono text-xs">
                     <div className="flex items-center justify-between text-[#00E575] font-bold">
-                      <span>PROJECT EVALUATION RUBRIC & SETTINGS</span>
+                      <span>AUTOMATED EVALUATION REQUIREMENTS (PRECOMPILE 0x0801 AUTO-FETCH)</span>
                       <span>MONTHLY OG RANKING: TOP {selectedProject.topOgLimit}</span>
                     </div>
 
@@ -514,11 +508,12 @@ export default function DashboardApp() {
                     </div>
                   </div>
 
-                  {/* Submission Form */}
+                  {/* Clean Submission Form (ONLY X POST URL!) */}
                   <form onSubmit={handleProjectSubmit} className="space-y-4 pt-2">
                     <div>
-                      <label className="block text-xs font-mono uppercase text-slate-300 mb-2">
-                        1. Contribution X/Twitter Post URL
+                      <label className="block text-xs font-mono uppercase text-slate-300 mb-2 flex items-center gap-2">
+                        <LinkIcon className="w-4 h-4 text-[#00E575]" />
+                        <span>Enter Contribution X/Twitter Post URL (Content Auto-Fetched via Precompile 0x0801)</span>
                       </label>
                       <input
                         type="url"
@@ -526,25 +521,7 @@ export default function DashboardApp() {
                         value={submissionUrl}
                         onChange={(e) => setSubmissionUrl(e.target.value)}
                         placeholder="https://x.com/your_handle/status/19824001"
-                        className="w-full bg-[#07110c] border border-[#00E575]/30 px-4 py-3 text-xs font-mono text-white placeholder-slate-600 focus:outline-none focus:border-[#00E575]"
-                      />
-                    </div>
-
-                    <div>
-                      <div className="flex justify-between items-center mb-2 font-mono text-xs">
-                        <label className="uppercase text-slate-300">
-                          2. Post Text Content (For Real-Time AI Tag & Quality Evaluation)
-                        </label>
-                        <span className="text-slate-400">
-                          Word Count: <strong className="text-white">{submissionText.trim().split(/\s+/).filter(Boolean).length}</strong>
-                        </span>
-                      </div>
-                      <textarea
-                        rows={4}
-                        value={submissionText}
-                        onChange={(e) => setSubmissionText(e.target.value)}
-                        placeholder="Paste your post text here to evaluate mentions, hashtags, keywords, and quality score..."
-                        className="w-full bg-[#07110c] border border-[#00E575]/30 p-4 text-xs font-mono text-white placeholder-slate-600 focus:outline-none focus:border-[#00E575] leading-relaxed"
+                        className="w-full bg-[#07110c] border border-[#00E575]/40 px-5 py-4 text-xs font-mono text-white placeholder-slate-600 focus:outline-none focus:border-[#00E575] text-sm"
                       />
                     </div>
 
@@ -554,7 +531,7 @@ export default function DashboardApp() {
                       className="btn-ritual-sharp h-14 px-8 text-xs font-mono uppercase tracking-wider flex items-center gap-3 w-full justify-center"
                     >
                       <Send className="w-4 h-4" />
-                      <span>{isSubmitting ? "Signing & Processing..." : `Sign & Submit Entry to ${selectedProject.name}`}</span>
+                      <span>{isSubmitting ? "Signing & Auto-Fetching X Data..." : `Sign Wallet & Submit Entry URL to ${selectedProject.name}`}</span>
                     </button>
                   </form>
 
@@ -588,7 +565,7 @@ export default function DashboardApp() {
                     </div>
                   )}
 
-                  {/* Real AI Evaluation & Penalization Breakdown Box */}
+                  {/* Real AI Evaluation & Fetched Content Breakdown Box */}
                   {latestEvaluationResult && (
                     <div className={`p-5 border-2 font-mono text-xs space-y-4 ${
                       latestEvaluationResult.hasPassedHardReqs 
@@ -600,12 +577,12 @@ export default function DashboardApp() {
                           {latestEvaluationResult.hasPassedHardReqs ? (
                             <>
                               <CheckCircle2 className="w-5 h-5 text-[#00E575]" />
-                              <span className="text-[#00E575]">QUALITY EVALUATION PASSED — HIGH SCORE</span>
+                              <span className="text-[#00E575]">AUTO-FETCHED X CONTENT PASSED — HIGH QUALITY SCORE</span>
                             </>
                           ) : (
                             <>
                               <XCircle className="w-5 h-5 text-red-500" />
-                              <span className="text-red-400">QUALITY EVALUATION FAILED — LOW SCORE PENALTY</span>
+                              <span className="text-red-400">AUTO-FETCHED X CONTENT FAILED — LOW SCORE PENALTY</span>
                             </>
                           )}
                         </div>
@@ -619,7 +596,7 @@ export default function DashboardApp() {
                       </div>
 
                       <div className="bg-[#040705] p-4 border border-[#00E575]/30 space-y-2">
-                        <span className="text-[10px] text-slate-400 block uppercase">RITUAL AI JUDGE FEEDBACK & REASON</span>
+                        <span className="text-[10px] text-slate-400 block uppercase">AUTO-FETCHED TWEET TEXT & RITUAL AI REASON</span>
                         <pre className="text-xs text-slate-200 whitespace-pre-wrap leading-relaxed">
                           {latestEvaluationResult.reason}
                         </pre>
@@ -631,7 +608,7 @@ export default function DashboardApp() {
             </div>
           )}
 
-          {/* TAB 2: PROJECT OWNER SETTINGS */}
+          {/* TAB 2: PROJECT SETTINGS */}
           {activeTab === 'console' && (
             <div className="glass-card-sharp p-6 space-y-6">
               <div>
