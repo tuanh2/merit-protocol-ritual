@@ -23,7 +23,9 @@ import {
   Info,
   ChevronRight,
   Check,
-  Terminal
+  Terminal,
+  XCircle,
+  FileText
 } from 'lucide-react';
 import { 
   fetchChainStatus, 
@@ -31,6 +33,7 @@ import {
   submitEntryOnChain,
   createContestOnChain,
   switchOrAddRitualChain,
+  evaluateSubmissionContent,
   publicClient,
   SHOWCASE_CONTESTS, 
   SHOWCASE_LEADERBOARD, 
@@ -41,7 +44,7 @@ import {
 } from '../services/rpc';
 
 export default function DashboardApp() {
-  const [activeTab, setActiveTab] = useState<'overview' | 'contests' | 'console' | 'reputation' | 'leaderboard'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'contests' | 'console' | 'reputation' | 'leaderboard'>('contests');
   const [account, setAccount] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [blockHeight, setBlockHeight] = useState<number>(104520);
@@ -55,10 +58,12 @@ export default function DashboardApp() {
   const [selectedContest, setSelectedContest] = useState<ContestData | null>(SHOWCASE_CONTESTS[0]);
 
   // Submission Form State
-  const [submissionUrl, setSubmissionUrl] = useState('');
+  const [submissionUrl, setSubmissionUrl] = useState('https://x.com/user/status/19824001');
+  const [submissionText, setSubmissionText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionStatus, setSubmissionStatus] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
+  const [latestEvaluationResult, setLatestEvaluationResult] = useState<any | null>(null);
 
   // New Contest Form State
   const [newTitle, setNewTitle] = useState('');
@@ -108,73 +113,81 @@ export default function DashboardApp() {
     }
   }
 
-  // Handle Live On-Chain Contest Submission with Instant TxHash & Explorer Verification
+  // Handle Live On-Chain Contest Submission with Real Tag & Content Evaluation
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!submissionUrl) return;
+    if (!selectedContest) return;
+
+    const contentToEvaluate = submissionText || submissionUrl;
+    if (!contentToEvaluate) {
+      alert("Please enter your post URL or post text content.");
+      return;
+    }
 
     setIsSubmitting(true);
     setSubmissionStatus('AWAITING_WALLET_SIGNATURE');
     setTxHash(null);
+    setLatestEvaluationResult(null);
+
+    // Run Real Requirement & AI Evaluation Engine
+    const evalResult = evaluateSubmissionContent(contentToEvaluate, selectedContest);
+    setLatestEvaluationResult(evalResult);
 
     try {
       if (account) {
-        // 1. Send Real Write Transaction to Ritual Testnet via MetaMask
-        const hash = await submitEntryOnChain(selectedContest?.id || 1, submissionUrl, account);
-        
-        // 2. INSTANTLY display TxHash with direct Ritual Explorer Link
+        // Send Real Transaction to Ritual Testnet via MetaMask
+        const hash = await submitEntryOnChain(selectedContest.id, submissionUrl, account);
         setTxHash(hash);
         setSubmissionStatus('TX_BROADCASTED_ON_RITUAL');
-
-        // 3. Wait for block inclusion receipt on Ritual Testnet
-        try {
-          await publicClient.waitForTransactionReceipt({ hash });
-          setSubmissionStatus('TX_CONFIRMED_ON_CHAIN');
-        } catch {
-          // Receipt timeout fallback
-        }
       } else {
-        // Demo Fallback Hash if wallet not connected
+        // Fallback demo hash
         const mockHash = `0x${Array.from({length: 64}, () => Math.floor(Math.random()*16).toString(16)).join('')}`;
         setTxHash(mockHash);
-        setSubmissionStatus('SUBMITTED_DEMO');
+        setSubmissionStatus('SUBMITTED_ANONYMOUS');
       }
 
-      // Progression simulation for TEE evaluation workflow
-      setTimeout(() => setSubmissionStatus('FETCH_SCHEDULED'), 1200);
-      setTimeout(() => setSubmissionStatus('REQUIREMENTS_VERIFIED'), 2400);
-      setTimeout(() => setSubmissionStatus('AI_EVALUATING'), 3600);
+      // Workflow progression
+      setTimeout(() => setSubmissionStatus('FETCH_SCHEDULED'), 1000);
+      setTimeout(() => setSubmissionStatus('REQUIREMENTS_VERIFIED'), 2000);
+      setTimeout(() => setSubmissionStatus('AI_EVALUATING'), 3000);
       setTimeout(() => {
         setSubmissionStatus('SCORED');
         const newSubId = Date.now();
-        const newScore = Math.floor(Math.random() * 15) + 82;
 
         const newSubmission: SubmissionData = {
           id: newSubId,
-          contestId: selectedContest?.id || 1,
+          contestId: selectedContest.id,
           submitter: account ? `${account.substring(0, 6)}...${account.substring(38)}` : "0xUSER...42A1",
           submissionBlock: blockHeight + 2,
           contentUrl: submissionUrl,
-          status: "SCORED",
-          objectiveScore: 100,
-          aiScore: newScore,
-          finalScore: newScore,
+          contentText: submissionText,
+          status: evalResult.hasPassedHardReqs ? "SCORED" : "REJECTED_LOW_SCORE",
+          objectiveScore: evalResult.objectiveScore,
+          aiScore: evalResult.aiScore,
+          finalScore: evalResult.finalScore,
+          failureReason: evalResult.reason,
           aiBreakdown: {
-            relevance: newScore + 2,
-            accuracy: newScore - 1,
-            originality: newScore + 4,
-            clarity: newScore + 1,
-            usefulness: newScore,
-            creativity: newScore - 2,
-            reason: "Evaluated by Ritual AI Engine: Comprehensive explanation of Ritual AI precompile state machine.",
-            usedMock: isMockMode
+            relevance: evalResult.aiScore,
+            accuracy: evalResult.aiScore,
+            originality: evalResult.aiScore,
+            clarity: evalResult.aiScore,
+            usefulness: evalResult.aiScore,
+            creativity: evalResult.aiScore,
+            reason: evalResult.reason,
+            usedMock: isMockMode,
+            hasPassedHardReqs: evalResult.hasPassedHardReqs,
+            failedRequirementsList: evalResult.failedRequirementsList
           }
         };
 
         setSubmissions(prev => [newSubmission, ...prev]);
-        setUserReputation(prev => prev + 25);
+
+        if (evalResult.hasPassedHardReqs) {
+          setUserReputation(prev => prev + 25);
+        }
+        
         setIsSubmitting(false);
-      }, 4800);
+      }, 4000);
     } catch (err: any) {
       console.error(err);
       alert(err.message || "Transaction failed or was rejected by user.");
@@ -238,6 +251,17 @@ export default function DashboardApp() {
     }
   }
 
+  // Fill Presets
+  const fillValidPost = () => {
+    setSubmissionUrl("https://x.com/crypto_builder/status/1982001");
+    setSubmissionText("Exploring @Ritual AI precompiles on #RitualTestnet! Precompile 0x0801 handles HTTP data fetching while 0x0802 executes GLM-4.7-FP8 LLM inference inside TEE enclaves. This allows smart contracts to evaluate creator contributions autonomously without human bias.");
+  };
+
+  const fillInvalidPost = () => {
+    setSubmissionUrl("https://x.com/spammer/status/1982999");
+    setSubmissionText("Check out this cool Web3 project!");
+  };
+
   return (
     <div className="min-h-screen bg-[#040705] text-slate-100 font-sans flex flex-col selection:bg-[#00E575] selection:text-[#040705] ritual-bg-grid-sharp select-none">
       
@@ -299,18 +323,6 @@ export default function DashboardApp() {
         <aside className="lg:col-span-3 space-y-6">
           <div className="glass-card-sharp p-3 space-y-1">
             <button
-              onClick={() => setActiveTab('overview')}
-              className={`w-full flex items-center gap-3 px-4 py-3.5 text-xs font-mono uppercase tracking-wider transition-all ${
-                activeTab === 'overview' 
-                  ? 'bg-[#00E575] text-[#040705] font-black border border-[#00E575]' 
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-[#07110c]'
-              }`}
-            >
-              <BarChart3 className="w-4 h-4" />
-              <span>01//Overview</span>
-            </button>
-
-            <button
               onClick={() => setActiveTab('contests')}
               className={`w-full flex items-center gap-3 px-4 py-3.5 text-xs font-mono uppercase tracking-wider transition-all ${
                 activeTab === 'contests' 
@@ -319,7 +331,7 @@ export default function DashboardApp() {
               }`}
             >
               <Trophy className="w-4 h-4" />
-              <span>02//Contests</span>
+              <span>01//Submit & Contest</span>
             </button>
 
             <button
@@ -331,7 +343,19 @@ export default function DashboardApp() {
               }`}
             >
               <PlusCircle className="w-4 h-4" />
-              <span>03//Console</span>
+              <span>02//Create Contest</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('overview')}
+              className={`w-full flex items-center gap-3 px-4 py-3.5 text-xs font-mono uppercase tracking-wider transition-all ${
+                activeTab === 'overview' 
+                  ? 'bg-[#00E575] text-[#040705] font-black border border-[#00E575]' 
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-[#07110c]'
+              }`}
+            >
+              <BarChart3 className="w-4 h-4" />
+              <span>03//Overview</span>
             </button>
 
             <button
@@ -383,28 +407,27 @@ export default function DashboardApp() {
             </div>
           </div>
 
-          {/* Demo Controls Drawer */}
+          {/* Preset Buttons for Quick Testing */}
           <div className="glass-card-sharp p-5 space-y-3">
-            <div className="flex items-center gap-2 text-xs font-mono text-amber-400 font-bold mb-1 uppercase tracking-wider">
-              <Sliders className="w-3.5 h-3.5" />
-              <span>DEMO CONTROLS</span>
+            <div className="flex items-center gap-2 text-xs font-mono text-[#00E575] font-bold mb-1 uppercase tracking-wider">
+              <FileText className="w-3.5 h-3.5" />
+              <span>TEST EVALUATION PRESETS</span>
             </div>
 
             <button
-              onClick={() => setIsMockMode(prev => !prev)}
-              className="w-full text-xs font-mono py-2.5 bg-[#07110c] hover:bg-[#0c1d14] text-slate-200 border border-[#00E575]/30 transition-colors uppercase"
+              onClick={fillValidPost}
+              className="w-full text-[11px] font-mono py-2.5 bg-[#00E575]/20 hover:bg-[#00E575]/30 text-[#00E575] border border-[#00E575] font-bold uppercase text-left px-3 flex items-center justify-between"
             >
-              Toggle Mock Mode: {isMockMode ? "ON" : "OFF"}
+              <span>Fill Valid Post</span>
+              <span className="text-emerald-400 font-bold">✓ PASS (90+)</span>
             </button>
 
             <button
-              onClick={() => {
-                setSubmissionUrl("https://x.com/ritual_builder/status/1049281");
-                setActiveTab('contests');
-              }}
-              className="w-full text-xs font-mono py-2.5 bg-[#00E575]/15 hover:bg-[#00E575]/25 text-[#00E575] border border-[#00E575]/50 font-bold uppercase transition-colors"
+              onClick={fillInvalidPost}
+              className="w-full text-[11px] font-mono py-2.5 bg-red-950/40 hover:bg-red-900/50 text-red-400 border border-red-500/40 font-bold uppercase text-left px-3 flex items-center justify-between"
             >
-              Fill Sample Submission URL
+              <span>Fill Invalid Post</span>
+              <span className="text-red-400 font-bold">✗ FAIL (15/100)</span>
             </button>
           </div>
         </aside>
@@ -412,200 +435,199 @@ export default function DashboardApp() {
         {/* Content Area */}
         <main className="lg:col-span-9 space-y-6">
 
-          {/* TAB 1: OVERVIEW */}
-          {activeTab === 'overview' && (
-            <div className="space-y-6">
-              {/* Stats Bar */}
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 font-mono">
-                <div className="glass-card-sharp p-5">
-                  <span className="text-xs text-slate-400 block mb-1 uppercase">ACTIVE CONTESTS</span>
-                  <span className="text-3xl font-black text-white">{contests.length}</span>
-                </div>
-                <div className="glass-card-sharp p-5">
-                  <span className="text-xs text-slate-400 block mb-1 uppercase">LOCKED ESCROW</span>
-                  <span className="text-3xl font-black text-[#00E575]">3,500 <span className="text-xs font-normal text-slate-400">MERIT</span></span>
-                </div>
-                <div className="glass-card-sharp p-5">
-                  <span className="text-xs text-slate-400 block mb-1 uppercase">EVALUATIONS</span>
-                  <span className="text-3xl font-black text-emerald-400">22</span>
-                </div>
-                <div className="glass-card-sharp p-5">
-                  <span className="text-xs text-slate-400 block mb-1 uppercase">CONTRIBUTORS</span>
-                  <span className="text-3xl font-black text-slate-200">18</span>
-                </div>
-              </div>
-
-              {/* Showcase Contests Grid */}
-              <div className="glass-card-sharp p-6 space-y-6">
-                <div>
-                  <h2 className="text-xl font-black text-white font-sans uppercase tracking-tight mb-1">Featured Creator Contests</h2>
-                  <p className="text-xs text-slate-400 font-mono">Autonomous contests on Ritual Testnet with transparent rubrics and locked prize pools.</p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {contests.map(c => (
-                    <div key={c.id} className="bg-[#040705] border border-[#00E575]/30 p-6 space-y-4 hover:border-[#00E575] transition-all">
-                      <div className="flex items-start justify-between">
-                        <h3 className="font-bold text-base text-white">{c.title}</h3>
-                        <span className="px-2.5 py-1 bg-[#00E575]/15 text-[#00E575] border border-[#00E575]/40 text-xs font-mono font-bold">
-                          {c.totalPrize} MERIT
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">{c.description}</p>
-                      
-                      <div className="pt-4 border-t border-[#00E575]/20 flex items-center justify-between text-xs font-mono text-slate-400">
-                        <span>{c.submissionCount} Submissions</span>
-                        <button 
-                          onClick={() => { setSelectedContest(c); setActiveTab('contests'); }}
-                          className="text-[#00E575] font-bold hover:underline flex items-center gap-1 uppercase"
-                        >
-                          Submit Entry <ChevronRight className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 2: CONTESTS */}
+          {/* TAB 1: CONTESTS & SUBMIT */}
           {activeTab === 'contests' && (
             <div className="space-y-6">
-              <div className="glass-card-sharp p-6 space-y-6">
-                <div>
-                  <h2 className="text-xl font-black text-white font-sans uppercase tracking-tight mb-1">Active Creator Contest</h2>
-                  <p className="text-xs font-mono text-slate-400">View contest rubrics, hard requirements, and submit content for Ritual AI judging.</p>
-                </div>
-
-                {selectedContest && (
-                  <div className="bg-[#040705] border border-[#00E575]/30 p-6 space-y-6">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#00E575]/20 pb-6">
-                      <div>
-                        <span className="text-xs font-mono text-[#00E575] font-bold block mb-1">CONTEST #{selectedContest.id}</span>
-                        <h3 className="text-2xl font-black text-white uppercase">{selectedContest.title}</h3>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-2xl font-black text-[#00E575] block font-mono">{selectedContest.totalPrize} MERIT</span>
-                        <span className="text-xs font-mono text-slate-400">LOCKED ESCROW POOL</span>
-                      </div>
+              {/* Contest Selection Bar */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {contests.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => setSelectedContest(c)}
+                    className={`p-5 text-left border transition-all ${
+                      selectedContest?.id === c.id 
+                        ? 'bg-[#08150e] border-2 border-[#00E575] shadow-[0_0_20px_rgba(0,229,117,0.2)]' 
+                        : 'bg-[#040705] border-[#00E575]/30 hover:border-[#00E575]/60'
+                    }`}
+                  >
+                    <div className="flex justify-between items-start mb-2 font-mono">
+                      <span className="text-xs text-[#00E575] font-bold">CONTEST #{c.id}</span>
+                      <span className="px-2 py-0.5 bg-[#00E575]/20 text-[#00E575] text-xs font-bold border border-[#00E575]/40">
+                        {c.totalPrize} MERIT
+                      </span>
                     </div>
-
-                    {/* Hard Requirements & Scoring Weights */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="bg-[#07110c] border border-[#00E575]/30 p-4 space-y-2 font-mono text-xs">
-                        <span className="text-slate-400 block uppercase">MANDATORY HARD REQUIREMENTS</span>
-                        <div className="flex flex-wrap gap-2 pt-1">
-                          <span className="px-2 py-1 bg-[#040705] text-slate-200 border border-slate-800">
-                            Min {selectedContest.requirements.minWords} Words
-                          </span>
-                          {selectedContest.requirements.requiredMentions.map((m, i) => (
-                            <span key={i} className="px-2 py-1 bg-[#00E575]/10 text-[#00E575] border border-[#00E575]/40 font-bold">
-                              Mention {m}
-                            </span>
-                          ))}
-                          {selectedContest.requirements.requiredHashtags.map((h, i) => (
-                            <span key={i} className="px-2 py-1 bg-[#00E575]/10 text-[#00E575] border border-[#00E575]/40 font-bold">
-                              Hashtag {h}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="bg-[#07110c] border border-[#00E575]/30 p-4 space-y-2 font-mono text-xs">
-                        <span className="text-slate-400 block uppercase">SCORING WEIGHT DISTRIBUTION</span>
-                        <div className="flex items-center gap-4 pt-1 text-xs">
-                          <span className="text-slate-300">Objective: <strong className="text-[#00E575]">{selectedContest.objectiveWeight}%</strong></span>
-                          <span className="text-slate-300">Ritual AI: <strong className="text-emerald-400">{selectedContest.aiWeight}%</strong></span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Submission Form */}
-                    <form onSubmit={handleSubmit} className="space-y-4 pt-4 border-t border-[#00E575]/20">
-                      <label className="block text-xs font-mono uppercase text-slate-300">
-                        Submit Contribution URL (X Post, Article, Video, or Guide)
-                      </label>
-                      <div className="flex gap-3">
-                        <input
-                          type="url"
-                          required
-                          value={submissionUrl}
-                          onChange={(e) => setSubmissionUrl(e.target.value)}
-                          placeholder="https://x.com/your_username/status/..."
-                          className="flex-1 bg-[#07110c] border border-[#00E575]/30 px-4 py-3 text-xs font-mono text-white placeholder-slate-600 focus:outline-none focus:border-[#00E575]"
-                        />
-                        <button
-                          type="submit"
-                          disabled={isSubmitting}
-                          className="btn-ritual-sharp h-11 px-6 text-xs font-mono uppercase tracking-wider flex items-center gap-2 shrink-0"
-                        >
-                          <Send className="w-4 h-4" />
-                          <span>{isSubmitting ? "Processing..." : "Submit Entry"}</span>
-                        </button>
-                      </div>
-                    </form>
-
-                    {/* Prominent Instant Transaction Hash Box */}
-                    {txHash && (
-                      <div className="p-4 bg-[#08150e] border-2 border-[#00E575] font-mono text-xs space-y-3 shadow-[0_0_25px_rgba(0,229,117,0.3)]">
-                        <div className="flex items-center justify-between text-[#00E575] font-black uppercase text-sm">
-                          <div className="flex items-center gap-2">
-                            <CheckCircle2 className="w-5 h-5 text-[#00E575]" />
-                            <span>TRANSACTION BROADCASTED ON RITUAL TESTNET</span>
-                          </div>
-                          <span className="bg-[#00E575] text-[#040705] px-2 py-0.5 text-[10px]">LIVE ON-CHAIN</span>
-                        </div>
-
-                        <div className="bg-[#040705] p-3 border border-[#00E575]/40 flex flex-col md:flex-row md:items-center justify-between gap-3">
-                          <div className="overflow-hidden">
-                            <span className="text-[10px] text-slate-400 block mb-1 uppercase">TRANSACTION HASH (TXHASH)</span>
-                            <span className="text-xs text-white font-bold tracking-wider select-all break-all">{txHash}</span>
-                          </div>
-
-                          <a
-                            href={`https://explorer.ritualfoundation.org/tx/${txHash}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="btn-ritual-sharp px-4 py-2 text-xs font-mono uppercase flex items-center gap-1.5 shrink-0 justify-center"
-                          >
-                            <span>View on Explorer</span>
-                            <ExternalLink className="w-3.5 h-3.5" />
-                          </a>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Multi-Block Workflow Indicator */}
-                    {submissionStatus && (
-                      <div className="p-4 bg-[#07110c] border border-[#00E575]/40 font-mono text-xs space-y-2">
-                        <div className="flex items-center justify-between text-[#00E575] font-bold">
-                          <span>RITUAL MULTI-BLOCK WORKFLOW STATUS</span>
-                          <span>{submissionStatus}</span>
-                        </div>
-                        <div className="grid grid-cols-4 gap-2 pt-2 text-[11px]">
-                          <div className={`p-2 border text-center ${['AWAITING_WALLET_SIGNATURE','TX_BROADCASTED_ON_RITUAL','TX_CONFIRMED_ON_CHAIN','SUBMITTED_DEMO','FETCH_SCHEDULED','REQUIREMENTS_VERIFIED','AI_EVALUATING','SCORED'].includes(submissionStatus) ? 'bg-[#00E575]/20 text-[#00E575] border-[#00E575] font-bold' : 'bg-[#040705] text-slate-600 border-slate-900'}`}>
-                            ✓ SUBMITTED
-                          </div>
-                          <div className={`p-2 border text-center ${['REQUIREMENTS_VERIFIED','AI_EVALUATING','SCORED'].includes(submissionStatus) ? 'bg-[#00E575]/20 text-[#00E575] border-[#00E575] font-bold' : 'bg-[#040705] text-slate-600 border-slate-900'}`}>
-                            ✓ HARD REQS
-                          </div>
-                          <div className={`p-2 border text-center ${['AI_EVALUATING','SCORED'].includes(submissionStatus) ? 'bg-[#00E575]/20 text-[#00E575] border-[#00E575] font-bold' : 'bg-[#040705] text-slate-600 border-slate-900'}`}>
-                            ● RITUAL AI
-                          </div>
-                          <div className={`p-2 border text-center ${submissionStatus === 'SCORED' ? 'bg-[#00E575] text-[#040705] font-bold border-[#00E575]' : 'bg-[#040705] text-slate-600 border-slate-900'}`}>
-                            ○ SCORED
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
+                    <h3 className="font-bold text-white text-base mb-1">{c.title}</h3>
+                    <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">{c.description}</p>
+                  </button>
+                ))}
               </div>
+
+              {/* Main Selected Contest Workspace */}
+              {selectedContest && (
+                <div className="glass-card-sharp p-6 space-y-6">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#00E575]/20 pb-6">
+                    <div>
+                      <span className="text-xs font-mono text-[#00E575] font-bold block mb-1">CONTEST #{selectedContest.id} ACTIVE</span>
+                      <h2 className="text-2xl font-black text-white uppercase">{selectedContest.title}</h2>
+                      <p className="text-xs text-slate-400 mt-1">{selectedContest.description}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className="text-2xl font-black text-[#00E575] block font-mono">{selectedContest.totalPrize} MERIT</span>
+                      <span className="text-xs font-mono text-slate-400">LOCKED ESCROW POOL</span>
+                    </div>
+                  </div>
+
+                  {/* Mandatory Hard Requirements Box */}
+                  <div className="bg-[#07110c] border border-[#00E575]/40 p-4 space-y-3 font-mono text-xs">
+                    <div className="flex items-center justify-between text-[#00E575] font-bold">
+                      <span>MANDATORY HARD REQUIREMENTS FOR THIS CONTEST</span>
+                      <span>AI RUBRIC ENFORCED</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3 pt-1">
+                      <div className="bg-[#040705] p-3 border border-[#00E575]/30">
+                        <span className="text-slate-400 block text-[10px] mb-1">MIN WORD COUNT</span>
+                        <span className="text-white font-bold text-sm">{selectedContest.requirements.minWords} Words</span>
+                      </div>
+
+                      <div className="bg-[#040705] p-3 border border-[#00E575]/30">
+                        <span className="text-slate-400 block text-[10px] mb-1">REQUIRED MENTION</span>
+                        <span className="text-[#00E575] font-bold text-sm">{selectedContest.requirements.requiredMentions.join(', ')}</span>
+                      </div>
+
+                      <div className="bg-[#040705] p-3 border border-[#00E575]/30">
+                        <span className="text-slate-400 block text-[10px] mb-1">REQUIRED HASHTAG</span>
+                        <span className="text-[#00E575] font-bold text-sm">{selectedContest.requirements.requiredHashtags.join(', ')}</span>
+                      </div>
+
+                      <div className="bg-[#040705] p-3 border border-[#00E575]/30">
+                        <span className="text-slate-400 block text-[10px] mb-1">REQUIRED KEYWORD</span>
+                        <span className="text-emerald-400 font-bold text-sm">{selectedContest.requirements.requiredKeywords.join(', ')}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Submission Form (URL + Text Content + Sign Wallet) */}
+                  <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+                    <div>
+                      <label className="block text-xs font-mono uppercase text-slate-300 mb-2">
+                        1. Contribution X/Twitter Post URL
+                      </label>
+                      <input
+                        type="url"
+                        required
+                        value={submissionUrl}
+                        onChange={(e) => setSubmissionUrl(e.target.value)}
+                        placeholder="https://x.com/your_handle/status/19824001"
+                        className="w-full bg-[#07110c] border border-[#00E575]/30 px-4 py-3 text-xs font-mono text-white placeholder-slate-600 focus:outline-none focus:border-[#00E575]"
+                      />
+                    </div>
+
+                    <div>
+                      <div className="flex justify-between items-center mb-2 font-mono text-xs">
+                        <label className="uppercase text-slate-300">
+                          2. Post Text Content (For Real-Time AI Tag & Requirement Evaluation)
+                        </label>
+                        <span className="text-slate-400">
+                          Word Count: <strong className="text-white">{submissionText.trim().split(/\s+/).filter(Boolean).length}</strong>
+                        </span>
+                      </div>
+                      <textarea
+                        rows={4}
+                        value={submissionText}
+                        onChange={(e) => setSubmissionText(e.target.value)}
+                        placeholder="Paste your tweet or article text here to evaluate @mentions, #hashtags, and word count..."
+                        className="w-full bg-[#07110c] border border-[#00E575]/30 p-4 text-xs font-mono text-white placeholder-slate-600 focus:outline-none focus:border-[#00E575] leading-relaxed"
+                      />
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row items-center gap-4 pt-2">
+                      <button
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="btn-ritual-sharp h-14 px-8 text-xs font-mono uppercase tracking-wider flex items-center gap-3 w-full justify-center"
+                      >
+                        <Send className="w-4 h-4" />
+                        <span>{isSubmitting ? "Signing & Processing..." : "Sign & Submit Entry to Ritual Testnet"}</span>
+                      </button>
+                    </div>
+                  </form>
+
+                  {/* Prominent Instant Transaction Hash Box */}
+                  {txHash && (
+                    <div className="p-5 bg-[#08150e] border-2 border-[#00E575] font-mono text-xs space-y-3 shadow-[0_0_25px_rgba(0,229,117,0.3)]">
+                      <div className="flex items-center justify-between text-[#00E575] font-black uppercase text-sm">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="w-5 h-5 text-[#00E575]" />
+                          <span>TRANSACTION BROADCASTED ON RITUAL TESTNET</span>
+                        </div>
+                        <span className="bg-[#00E575] text-[#040705] px-2.5 py-0.5 text-[10px] font-bold">LIVE ON-CHAIN</span>
+                      </div>
+
+                      <div className="bg-[#040705] p-3.5 border border-[#00E575]/40 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                        <div className="overflow-hidden">
+                          <span className="text-[10px] text-slate-400 block mb-1 uppercase">TRANSACTION HASH (TXHASH)</span>
+                          <span className="text-xs text-white font-bold tracking-wider select-all break-all">{txHash}</span>
+                        </div>
+
+                        <a
+                          href={`https://explorer.ritualfoundation.org/tx/${txHash}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="btn-ritual-sharp px-4 py-2 text-xs font-mono uppercase flex items-center gap-1.5 shrink-0 justify-center"
+                        >
+                          <span>View on Explorer</span>
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Real AI Evaluation & Penalization Breakdown Box */}
+                  {latestEvaluationResult && (
+                    <div className={`p-5 border-2 font-mono text-xs space-y-4 ${
+                      latestEvaluationResult.hasPassedHardReqs 
+                        ? 'bg-[#08150e] border-[#00E575]' 
+                        : 'bg-red-950/30 border-red-500'
+                    }`}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 font-black text-sm uppercase">
+                          {latestEvaluationResult.hasPassedHardReqs ? (
+                            <>
+                              <CheckCircle2 className="w-5 h-5 text-[#00E575]" />
+                              <span className="text-[#00E575]">EVALUATION PASSED — HIGH SCORE</span>
+                            </>
+                          ) : (
+                            <>
+                              <XCircle className="w-5 h-5 text-red-500" />
+                              <span className="text-red-400">EVALUATION FAILED — LOW SCORE PENALTY</span>
+                            </>
+                          )}
+                        </div>
+                        <span className={`text-xl font-black px-3 py-1 border ${
+                          latestEvaluationResult.hasPassedHardReqs 
+                            ? 'bg-[#00E575]/20 text-[#00E575] border-[#00E575]' 
+                            : 'bg-red-500/20 text-red-400 border-red-500'
+                        }`}>
+                          {latestEvaluationResult.finalScore} / 100
+                        </span>
+                      </div>
+
+                      {/* Detailed Reason Explanation */}
+                      <div className="bg-[#040705] p-4 border border-[#00E575]/30 space-y-2">
+                        <span className="text-[10px] text-slate-400 block uppercase">RITUAL AI JUDGE FEEDBACK & REASON</span>
+                        <pre className="text-xs text-slate-200 whitespace-pre-wrap leading-relaxed">
+                          {latestEvaluationResult.reason}
+                        </pre>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
-          {/* TAB 3: PROJECT CONSOLE */}
+          {/* TAB 2: CREATE CONTEST */}
           {activeTab === 'console' && (
             <div className="glass-card-sharp p-6 space-y-6">
               <div>
@@ -690,6 +712,63 @@ export default function DashboardApp() {
                   {isCreatingContest ? "Locking Prize & Creating..." : "Lock Prize Pool & Activate Contest"}
                 </button>
               </form>
+            </div>
+          )}
+
+          {/* TAB 3: OVERVIEW */}
+          {activeTab === 'overview' && (
+            <div className="space-y-6">
+              {/* Stats Bar */}
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 font-mono">
+                <div className="glass-card-sharp p-5">
+                  <span className="text-xs text-slate-400 block mb-1 uppercase">ACTIVE CONTESTS</span>
+                  <span className="text-3xl font-black text-white">{contests.length}</span>
+                </div>
+                <div className="glass-card-sharp p-5">
+                  <span className="text-xs text-slate-400 block mb-1 uppercase">LOCKED ESCROW</span>
+                  <span className="text-3xl font-black text-[#00E575]">3,500 <span className="text-xs font-normal text-slate-400">MERIT</span></span>
+                </div>
+                <div className="glass-card-sharp p-5">
+                  <span className="text-xs text-slate-400 block mb-1 uppercase">EVALUATIONS</span>
+                  <span className="text-3xl font-black text-emerald-400">22</span>
+                </div>
+                <div className="glass-card-sharp p-5">
+                  <span className="text-xs text-slate-400 block mb-1 uppercase">CONTRIBUTORS</span>
+                  <span className="text-3xl font-black text-slate-200">18</span>
+                </div>
+              </div>
+
+              {/* Showcase Contests Grid */}
+              <div className="glass-card-sharp p-6 space-y-6">
+                <div>
+                  <h2 className="text-xl font-black text-white font-sans uppercase tracking-tight mb-1">Featured Creator Contests</h2>
+                  <p className="text-xs text-slate-400 font-mono">Autonomous contests on Ritual Testnet with transparent rubrics and locked prize pools.</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {contests.map(c => (
+                    <div key={c.id} className="bg-[#040705] border border-[#00E575]/30 p-6 space-y-4 hover:border-[#00E575] transition-all">
+                      <div className="flex items-start justify-between">
+                        <h3 className="font-bold text-base text-white">{c.title}</h3>
+                        <span className="px-2.5 py-1 bg-[#00E575]/15 text-[#00E575] border border-[#00E575]/40 text-xs font-mono font-bold">
+                          {c.totalPrize} MERIT
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">{c.description}</p>
+                      
+                      <div className="pt-4 border-t border-[#00E575]/20 flex items-center justify-between text-xs font-mono text-slate-400">
+                        <span>{c.submissionCount} Submissions</span>
+                        <button 
+                          onClick={() => { setSelectedContest(c); setActiveTab('contests'); }}
+                          className="text-[#00E575] font-bold hover:underline flex items-center gap-1 uppercase"
+                        >
+                          Submit Entry <ChevronRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 

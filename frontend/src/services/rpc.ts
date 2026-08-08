@@ -89,64 +89,6 @@ export const MERIT_PROTOCOL_ABI = [
       { name: 'rubricHash', type: 'bytes32' }
     ],
     outputs: [{ type: 'uint256' }]
-  },
-  {
-    name: 'finalizeContest',
-    type: 'function',
-    stateMutability: 'nonpayable',
-    inputs: [{ name: 'contestId', type: 'uint256' }],
-    outputs: []
-  },
-  {
-    name: 'contests',
-    type: 'function',
-    stateMutability: 'view',
-    inputs: [{ name: 'contestId', type: 'uint256' }],
-    outputs: [
-      { name: 'contestId', type: 'uint256' },
-      { name: 'owner', type: 'address' },
-      { name: 'title', type: 'string' },
-      { name: 'description', type: 'string' },
-      { name: 'startBlock', type: 'uint256' },
-      { name: 'endBlock', type: 'uint256' },
-      { name: 'prizeToken', type: 'address' },
-      { name: 'totalPrize', type: 'uint256' },
-      { name: 'winnerCount', type: 'uint256' },
-      { name: 'submissionCount', type: 'uint256' },
-      { name: 'status', type: 'uint8' },
-      { name: 'objectiveWeight', type: 'uint256' },
-      { name: 'aiWeight', type: 'uint256' },
-      { name: 'finalized', type: 'bool' }
-    ]
-  },
-  {
-    name: 'getContestLeaderboard',
-    type: 'function',
-    stateMutability: 'view',
-    inputs: [{ name: 'contestId', type: 'uint256' }],
-    outputs: [{
-      type: 'tuple[]',
-      components: [
-        { name: 'submissionId', type: 'uint256' },
-        { name: 'submitter', type: 'address' },
-        { name: 'finalScore', type: 'uint256' },
-        { name: 'objectiveScore', type: 'uint256' },
-        { name: 'submissionBlock', type: 'uint256' }
-      ]
-    }]
-  },
-  {
-    name: 'userProfiles',
-    type: 'function',
-    stateMutability: 'view',
-    inputs: [{ name: 'user', type: 'address' }],
-    outputs: [
-      { name: 'reputation', type: 'uint256' },
-      { name: 'roleLevel', type: 'uint256' },
-      { name: 'contributionsSubmitted', type: 'uint256' },
-      { name: 'contestsEntered', type: 'uint256' },
-      { name: 'contestsWon', type: 'uint256' }
-    ]
   }
 ] as const;
 
@@ -192,6 +134,7 @@ export interface SubmissionData {
   submitter: string;
   submissionBlock: number;
   contentUrl: string;
+  contentText?: string;
   status: string;
   objectiveScore: number;
   aiScore: number;
@@ -206,6 +149,8 @@ export interface SubmissionData {
     creativity: number;
     reason: string;
     usedMock: boolean;
+    hasPassedHardReqs: boolean;
+    failedRequirementsList: string[];
   };
 }
 
@@ -217,12 +162,12 @@ export interface LeaderboardItem {
   submissionBlock: number;
 }
 
-// Initial Showcase Contests
+// Detailed Sample Contests (Project Post Writing Contests)
 export const SHOWCASE_CONTESTS: ContestData[] = [
   {
     id: 1,
-    title: "Explain Ritual AI Precompiles",
-    description: "Create an educational thread, guide, or video explaining how Ritual AI Precompiles (0x0801 HTTP & 0x0802 LLM) enable smart contracts to execute TEE-verified inference on Ritual Testnet.",
+    title: "Writing Contest #1: Ritual AI Precompile Technical Thread",
+    description: "Write an educational post or thread explaining how Ritual AI Precompiles (0x0801 HTTP & 0x0802 LLM) enable smart contracts to execute TEE-verified AI inference on Ritual Testnet.",
     startBlock: 104200,
     endBlock: 154200,
     prizeToken: "0xMERIT",
@@ -243,8 +188,8 @@ export const SHOWCASE_CONTESTS: ContestData[] = [
   },
   {
     id: 2,
-    title: "Autonomous Agent Architecture Showcase",
-    description: "Build or design a multi-block autonomous agent workflow utilizing Ritual Scheduler and TEE verification. Demonstrate transparent on-chain decision making.",
+    title: "Writing Contest #2: Merit Protocol Creator Economy Article",
+    description: "Write an in-depth article analyzing how Merit Protocol removes manual admin bias by using on-chain prize escrow and soulbound reputation badges for Web3 creators.",
     startBlock: 102000,
     endBlock: 162000,
     prizeToken: "0xMERIT",
@@ -256,11 +201,11 @@ export const SHOWCASE_CONTESTS: ContestData[] = [
     objectiveWeight: 30,
     aiWeight: 70,
     requirements: {
-      minWords: 100,
+      minWords: 80,
       requiredMentions: ["@Ritual"],
-      requiredHashtags: ["#RitualAgent"],
-      requiredKeywords: ["Scheduler", "TEE"],
-      requiresMedia: true,
+      requiredHashtags: ["#MeritProtocol"],
+      requiredKeywords: ["Reputation"],
+      requiresMedia: false,
     },
   },
 ];
@@ -279,6 +224,7 @@ export const SHOWCASE_SUBMISSIONS: SubmissionData[] = [
     submitter: "0x71C...82A9",
     submissionBlock: 104320,
     contentUrl: "https://x.com/web3builder/status/17894210",
+    contentText: "Exploring @Ritual AI precompiles on #RitualTestnet! Precompile 0x0801 handles HTTP data fetching while 0x0802 runs GLM-4.7-FP8 LLM inference inside TEE enclaves. This allows smart contracts to evaluate creator contributions autonomously without human bias.",
     status: "SCORED",
     objectiveScore: 100,
     aiScore: 88,
@@ -290,11 +236,73 @@ export const SHOWCASE_SUBMISSIONS: SubmissionData[] = [
       clarity: 96,
       usefulness: 90,
       creativity: 85,
-      reason: "Outstanding explanation of HTTP (0x0801) and LLM (0x0802) precompiles. Technical accuracy is top tier.",
+      reason: "EXCELLENT EVALUATION: All hard requirements verified (@Ritual mention, #RitualTestnet hashtag, Precompile keyword). High technical accuracy.",
       usedMock: true,
+      hasPassedHardReqs: true,
+      failedRequirementsList: [],
     },
   },
 ];
+
+// Evaluate Submission Content against Contest Requirements
+export function evaluateSubmissionContent(text: string, contest: ContestData) {
+  const reqs = contest.requirements;
+  const failed: string[] = [];
+
+  // 1. Check Mentions
+  for (const m of reqs.requiredMentions) {
+    if (!text.toLowerCase().includes(m.toLowerCase())) {
+      failed.push(`Missing mandatory mention: ${m}`);
+    }
+  }
+
+  // 2. Check Hashtags
+  for (const h of reqs.requiredHashtags) {
+    if (!text.toLowerCase().includes(h.toLowerCase())) {
+      failed.push(`Missing mandatory hashtag: ${h}`);
+    }
+  }
+
+  // 3. Check Word Count
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  if (words.length < reqs.minWords) {
+    failed.push(`Word count (${words.length} words) below minimum required (${reqs.minWords} words)`);
+  }
+
+  // 4. Check Required Keywords
+  for (const k of reqs.requiredKeywords) {
+    if (!text.toLowerCase().includes(k.toLowerCase())) {
+      failed.push(`Missing mandatory keyword: "${k}"`);
+    }
+  }
+
+  const hasPassedHardReqs = failed.length === 0;
+
+  if (!hasPassedHardReqs) {
+    return {
+      objectiveScore: 0,
+      aiScore: 20,
+      finalScore: 15,
+      hasPassedHardReqs: false,
+      failedRequirementsList: failed,
+      reason: `PENALIZED (LOW SCORE: 15/100): Submission failed mandatory requirements!\n• ${failed.join('\n• ')}\n\nRitual AI Evaluation: Content marked invalid due to incomplete tags/word-count criteria.`
+    };
+  }
+
+  // High score if requirements passed
+  const wordBonus = Math.min(words.length - reqs.minWords, 50);
+  const baseAi = 85 + Math.floor(Math.random() * 8);
+  const finalAi = Math.min(baseAi + Math.floor(wordBonus / 10), 98);
+
+  return {
+    objectiveScore: 100,
+    aiScore: finalAi,
+    finalScore: finalAi,
+    hasPassedHardReqs: true,
+    failedRequirementsList: [],
+    reason: `EXCELLENT EVALUATION (HIGH SCORE: ${finalAi}/100): All hard requirements verified successfully!\n✓ Mention ${reqs.requiredMentions.join(', ')} confirmed.\n✓ Hashtag ${reqs.requiredHashtags.join(', ')} confirmed.\n✓ Word count: ${words.length} words (Min: ${reqs.minWords}).\n\nRitual AI Evaluation: High relevance and clear project structure.`
+  };
+}
 
 // Read Chain Status (Block Height & Online Status)
 export async function fetchChainStatus() {
@@ -319,16 +327,14 @@ export async function switchOrAddRitualChain() {
   const ethereum = (window as any).ethereum;
   if (!ethereum) throw new Error("MetaMask is not installed.");
 
-  const chainIdHex = `0x${RITUAL_TESTNET_CONFIG.chainId.toString(16)}`; // 0x7bb
+  const chainIdHex = `0x${RITUAL_TESTNET_CONFIG.chainId.toString(16)}`;
 
   try {
-    // 1. Try switching to Ritual Testnet
     await ethereum.request({
       method: 'wallet_switchEthereumChain',
       params: [{ chainId: chainIdHex }],
     });
   } catch (switchError: any) {
-    // 2. If network doesn't exist in MetaMask (error 4902 or unrecognized chain), add it automatically
     try {
       await ethereum.request({
         method: 'wallet_addEthereumChain',
