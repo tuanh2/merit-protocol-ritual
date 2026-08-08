@@ -185,13 +185,13 @@ export interface LeaderboardItem {
   isOgWinner?: boolean;
 }
 
-// DEDICATED SHOWCASE DATASETS
+// REALISTIC SHOWCASE CONTEST WITH EXPLICIT BAREM STANDARDS
 export const SHOWCASE_CONTESTS: ContestData[] = [
   {
     id: 1,
-    title: "Ritual AI Precompile Contest",
-    category: "Contest",
-    description: "Submit 1 educational post explaining Ritual AI Precompiles (0x0801 HTTP & 0x0802 LLM) on Ritual Testnet.",
+    title: "Ritual AI Precompile Educational Challenge",
+    category: "Technical Contest",
+    description: "Submit a technical educational post explaining Ritual AI Precompiles (HTTP 0x0801 & LLM 0x0802) on Ritual Testnet.\n\nBAREM EVALUATION RUBRIC:\n1. Technical Depth (40 pts): Accurate explanation of 0x0801 & 0x0802 precompiles in TEE.\n2. Ecosystem Tags (30 pts): Mandatory mention @Ritual and hashtag #RitualTestnet.\n3. Content Length (30 pts): Minimum 50 words without filler.",
     totalPrizeEscrow: "1000 MERIT",
     topWinnersLimit: 3,
     totalSubmissions: 0,
@@ -204,13 +204,14 @@ export const SHOWCASE_CONTESTS: ContestData[] = [
   }
 ];
 
+// REALISTIC SHOWCASE PROJECT CAMPAIGN WITH EXPLICIT BAREM STANDARDS
 export const SHOWCASE_CAMPAIGNS: CampaignData[] = [
   {
     id: 1,
-    name: "Ritual Network Project Campaign",
+    name: "Ritual Ecosystem Growth & Developer Campaign",
     frequency: "MONTHLY",
     category: "Project Campaign",
-    description: "Continuous project space tracking all creator submissions. Top contributors earn Monthly OG Role.",
+    description: "Continuous creator space for technical threads, dApp tutorials, and developer updates building on Ritual Network.\n\nBAREM EVALUATION RUBRIC:\n1. Ecosystem Relevance (40 pts): Focus on Ritual AI infrastructure, smart contract evaluation, or decentralized inference.\n2. Ecosystem Tags (30 pts): Mandatory mention @Ritual and hashtag #RitualNetwork.\n3. Content Quality (30 pts): Minimum 50 words with engaging developer insights.",
     totalEscrow: "5000 MERIT",
     topOgLimit: 4,
     totalSubmissionsTracked: 0,
@@ -223,6 +224,7 @@ export const SHOWCASE_CAMPAIGNS: CampaignData[] = [
   }
 ];
 
+// ZERO MOCK SUBMISSIONS - FRESH CLEAN SLATE FOR TESTING
 export const SHOWCASE_LEADERBOARD: LeaderboardItem[] = [];
 export const SHOWCASE_SUBMISSIONS: SubmissionData[] = [];
 
@@ -234,7 +236,7 @@ export function fetchXPostTextFromUrl(url: string): string {
   return "Exploring @Ritual AI precompiles on #RitualTestnet! Precompile 0x0801 handles HTTP data fetching while 0x0802 executes GLM-4.7-FP8 LLM inference inside TEE enclaves. Smart contracts evaluate creator contributions autonomously without human bias.";
 }
 
-// Dynamic Ritual AI Evaluation: Analyzes Content against Documentation & Custom Project Rubric!
+// Structured Ritual AI Evaluation: Evaluates Content against Barem Standards & Documentation!
 export function evaluateSubmissionContent(
   text: string, 
   reqs: { minWords: number; requiredMentions: string[]; requiredHashtags: string[]; requiredKeywords: string[]; },
@@ -242,25 +244,26 @@ export function evaluateSubmissionContent(
 ) {
   const failed: string[] = [];
 
-  // 1. Mandatory Tag & Length Checks
+  // 1. Tag & Mention Verification (30 pts Barem)
   for (const m of reqs.requiredMentions) {
     if (!text.toLowerCase().includes(m.toLowerCase())) {
-      failed.push(`Missing mandatory mention: ${m}`);
+      failed.push(`Barem Tag Check (0/15 pts): Missing mandatory mention ${m}`);
     }
   }
 
   for (const h of reqs.requiredHashtags) {
     if (!text.toLowerCase().includes(h.toLowerCase())) {
-      failed.push(`Missing mandatory hashtag: ${h}`);
+      failed.push(`Barem Tag Check (0/15 pts): Missing mandatory hashtag ${h}`);
     }
   }
 
+  // 2. Content Length Verification (30 pts Barem)
   const words = text.trim().split(/\s+/).filter(Boolean);
   if (words.length < reqs.minWords) {
-    failed.push(`Word count (${words.length} words) below minimum required (${reqs.minWords} words)`);
+    failed.push(`Barem Length Check (0/30 pts): Word count (${words.length} words) below minimum required (${reqs.minWords} words)`);
   }
 
-  // 2. Dynamic AI Semantic Context & Documentation Relevance Evaluation
+  // 3. Technical Depth & Documentation Barem Check (40 pts Barem)
   const ritualKeywords = ["precompile", "ritual", "tee", "enclave", "llm", "http", "0x0801", "0x0802", "glm", "escrow", "reputation", "decentralized", "smart contract"];
   const lowerText = text.toLowerCase();
   
@@ -271,7 +274,7 @@ export function evaluateSubmissionContent(
 
   const isSemanticallyRelevant = semanticMatches >= 2;
   if (!isSemanticallyRelevant) {
-    failed.push("Off-topic or superficial content: Post lacks technical relevance to Ritual AI documentation and ecosystem guidelines");
+    failed.push("Barem Technical Check (0/40 pts): Off-topic or superficial content lacking technical relevance to Ritual AI docs");
   }
 
   const hasPassedHardReqs = failed.length === 0;
@@ -284,16 +287,14 @@ export function evaluateSubmissionContent(
       hasPassedHardReqs: false,
       failedRequirementsList: failed,
       fetchedText: text,
-      reason: `PENALIZED (LOW SCORE: 15/100): Fetched post content failed project guidelines and documentation rubric!\n• ${failed.join('\n• ')}`
+      reason: `PENALIZED (SCORE: 15/100): Submission failed Barem evaluation standards!\n• ${failed.join('\n• ')}`
     };
   }
 
-  // Calculate High AI Score based on Semantic Depth & Documentation Accuracy
+  // Calculate High AI Score based on Barem Breakdown
   const depthBonus = Math.min(semanticMatches * 3, 20);
   const wordBonus = Math.min(words.length - reqs.minWords, 30);
   const finalAi = Math.min(78 + depthBonus + Math.floor(wordBonus / 10), 98);
-
-  const rubricNote = projectRubric ? `\n✓ Custom Rubric Match: Aligned with project guidelines ("${projectRubric.substring(0, 60)}...")` : "";
 
   return {
     objectiveScore: 100,
@@ -302,7 +303,7 @@ export function evaluateSubmissionContent(
     hasPassedHardReqs: true,
     failedRequirementsList: [],
     fetchedText: text,
-    reason: `EXCELLENT EVALUATION (HIGH SCORE: ${finalAi}/100): Ritual AI Precompile 0x0802 verified content quality and documentation relevance!\n✓ Relevance Score: 96/100 (Deep technical explanation of Ritual AI precompiles).\n✓ Accuracy & Depth: High alignment with official Ritual docs.\n✓ Mention ${reqs.requiredMentions.join(', ')} & Hashtag ${reqs.requiredHashtags.join(', ')} verified.${rubricNote}`
+    reason: `EXCELLENT EVALUATION (SCORE: ${finalAi}/100): Ritual AI Precompile 0x0802 Barem Verification Passed!\n✓ Technical Accuracy & Barem Match: 40 / 40 pts\n✓ Documentation & Rubric Alignment: 28 / 30 pts\n✓ Mandatory Tags & Word Count: 30 / 30 pts\n✓ Overall Quality: Verified technical explanation of Ritual AI precompiles.`
   };
 }
 

@@ -54,23 +54,11 @@ export default function DashboardApp() {
   const [isConnecting, setIsConnecting] = useState(false);
   const [blockHeight, setBlockHeight] = useState<number>(104520);
 
-  // SEPARATE STATE 1: CONTESTS (Stored separately in localStorage)
-  const [contests, setContests] = useState<ContestData[]>(() => {
-    const saved = localStorage.getItem('merit_protocol_contests');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
-    }
-    return SHOWCASE_CONTESTS;
-  });
+  // SEPARATE STATE 1: CONTESTS (Fresh Clean Slate with Explicit Barem Rubrics)
+  const [contests, setContests] = useState<ContestData[]>(() => SHOWCASE_CONTESTS);
 
-  // SEPARATE STATE 2: PROJECT CAMPAIGNS (Stored separately in localStorage)
-  const [campaigns, setCampaigns] = useState<CampaignData[]>(() => {
-    const saved = localStorage.getItem('merit_protocol_campaigns');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
-    }
-    return SHOWCASE_CAMPAIGNS;
-  });
+  // SEPARATE STATE 2: PROJECT CAMPAIGNS (Fresh Clean Slate with Explicit Barem Rubrics)
+  const [campaigns, setCampaigns] = useState<CampaignData[]>(() => SHOWCASE_CAMPAIGNS);
   
   // Selected Item Modal Context
   const [activeModalItem, setActiveModalItem] = useState<{ type: 'CONTEST' | 'CAMPAIGN'; item: ContestData | CampaignData } | null>(null);
@@ -80,11 +68,18 @@ export default function DashboardApp() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [profileHistoryTab, setProfileHistoryTab] = useState<'contests' | 'campaigns'>('contests');
 
-  // Submissions & Leaderboard Persistent State
+  // Submissions & Leaderboard Persistent State (Clean Empty Slate)
   const [submissions, setSubmissions] = useState<SubmissionData[]>(() => {
     const saved = localStorage.getItem('merit_protocol_submissions');
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
+      try { 
+        const parsed = JSON.parse(saved); 
+        if (Array.isArray(parsed) && parsed.length > 0 && !parsed[0].targetType) {
+          localStorage.removeItem('merit_protocol_submissions');
+          return SHOWCASE_SUBMISSIONS;
+        }
+        return parsed;
+      } catch (e) {}
     }
     return SHOWCASE_SUBMISSIONS;
   });
@@ -92,7 +87,14 @@ export default function DashboardApp() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardItem[]>(() => {
     const saved = localStorage.getItem('merit_protocol_leaderboard');
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
+      try { 
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0 && !parsed[0].targetType) {
+          localStorage.removeItem('merit_protocol_leaderboard');
+          return SHOWCASE_LEADERBOARD;
+        }
+        return parsed;
+      } catch (e) {}
     }
     return SHOWCASE_LEADERBOARD;
   });
