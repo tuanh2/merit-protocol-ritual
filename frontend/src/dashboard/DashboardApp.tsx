@@ -133,10 +133,20 @@ export default function DashboardApp() {
   const [depositAmount, setDepositAmount] = useState('0.1');
 
   useEffect(() => {
-    if (account) {
-      // Simulate initial balance for demo
-      setRitualWalletBalance("0.1");
+    async function loadWalletBalance() {
+      if (account) {
+        try {
+          const bal = await checkRitualWalletBalance(account);
+          setRitualWalletBalance(bal);
+        } catch (e) {
+          console.error(e);
+        }
+      }
     }
+    loadWalletBalance();
+    // Poll balance every 15 seconds
+    const interval = setInterval(loadWalletBalance, 15000);
+    return () => clearInterval(interval);
   }, [account]);
 
   async function handleDepositToRitualWallet() {
@@ -146,13 +156,18 @@ export default function DashboardApp() {
     }
     try {
       setIsDepositing(true);
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      const newBal = (Number(ritualWalletBalance) + Number(depositAmount.replace(',', '.'))).toFixed(2);
-      setRitualWalletBalance(newBal);
-      alert(`Successfully deposited ${depositAmount} RITUAL! Real-time TEE AI scoring is now fully active!`);
+      const hash = await depositToRitualWallet(depositAmount, 10000, account);
+      // Wait a bit, then fetch new balance
+      setTimeout(async () => {
+        try {
+          const bal = await checkRitualWalletBalance(account);
+          setRitualWalletBalance(bal);
+          alert(`Successfully deposited ${depositAmount} RITUAL! Real-time TEE AI scoring is now fully active!`);
+        } catch (_) {}
+      }, 6000);
     } catch (e: any) {
       console.error(e);
-      alert("Failed to deposit to RitualWallet.");
+      alert(e.message || "Failed to deposit to RitualWallet.");
     } finally {
       setIsDepositing(false);
     }
@@ -225,12 +240,34 @@ export default function DashboardApp() {
     const activeItem = activeModalItem.item;
     const isContest = activeModalItem.type === 'CONTEST';
 
-    const fetchedText = manualText;
-    if (!fetchedText || fetchedText.trim().split(/\s+/).length < 2) {
-      alert("Please type your prompt attempt first.");
-      setIsSubmitting(false);
-      setSubmissionStatus(null);
-      return;
+    // 1. REAL Fetch: Get actual tweet text via Vercel Edge Function → Twitter oEmbed API
+    let fetchedText = '';
+    if (showManualTextInput) {
+      if (!manualText || manualText.trim().split(/\s+/).length < 3) {
+        alert("Please paste the actual tweet text first.");
+        setIsSubmitting(false);
+        setSubmissionStatus(null);
+        return;
+      }
+      fetchedText = manualText;
+    } else {
+      try {
+        setSubmissionStatus('FETCHING_POST_CONTENT');
+        const fetchRes = await fetch(`/api/fetch-tweet?url=${encodeURIComponent(submissionUrl)}`);
+        if (fetchRes.ok) {
+          const fetchData = await fetchRes.json();
+          fetchedText = fetchData.text || '';
+        }
+      } catch (_) {}
+
+      // Fallback if oEmbed fails (X blocks direct server fetches)
+      if (!fetchedText || fetchedText.trim().split(/\s+/).length < 3) {
+        setShowManualTextInput(true);
+        setIsSubmitting(false);
+        setSubmissionStatus(null);
+        alert("Unable to fetch tweet text automatically due to X rate limiting or restrictions. Please paste the exact text of your tweet in the box that just appeared to verify.");
+        return;
+      }
     }
 
     // 2. REAL AI Scoring: Call OpenRouter via Vercel Edge Function with actual Barem criteria
@@ -286,12 +323,8 @@ export default function DashboardApp() {
         return;
       }
 
-      // Since the Ritual Testnet is closed, we simulate the signature and transaction mining for a seamless demo!
-      setSubmissionStatus('AWAITING_WALLET_SIGNATURE');
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      const randomHex = Array.from({length: 64}, () => Math.floor(Math.random()*16).toString(16)).join('');
-      const hash = `0x${randomHex}`;
+      // STRICT 100% REAL ON-CHAIN METAMASK SIGNATURE! PROMPTS METAMASK EVERY TIME!
+      const hash = await submitEntryOnChain(activeItem.id, submissionUrl, fetchedText, currentAccount);
 
       setTxHash(hash);
       setSubmissionStatus('TX_BROADCASTED_ON_RITUAL');
@@ -1179,25 +1212,22 @@ export default function DashboardApp() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-mono uppercase text-slate-300 mb-2 font-bold flex items-center gap-1.5">
-                        <MessageSquare className="w-4 h-4 text-[#00E575]" />
-                        <span>1. Your Prompt Attempt</span>
+                        <LinkIcon className="w-4 h-4 text-[#00E575]" />
+                        <span>1. X Post Link</span>
                       </label>
-                      <textarea
+                      <input
+                        type="url"
                         required
-                        rows={4}
-                        value={manualText}
-                        onChange={(e) => {
-                          setManualText(e.target.value);
-                          setSubmissionUrl(`https://prompt-gladiator.com/contest-${activeModalItem?.item.id}/${Date.now()}`);
-                        }}
-                        placeholder="Type your message to convince the AI Guard..."
+                        value={submissionUrl}
+                        onChange={(e) => setSubmissionUrl(e.target.value)}
+                        placeholder="https://x.com/your_handle/status/19824001"
                         className="w-full bg-[#07110c] border border-[#00E575]/40 px-4 py-3 text-xs font-mono text-white placeholder-slate-600 focus:outline-none focus:border-[#00E575]"
                       />
                     </div>
 
                     <div>
                       <label className="block text-xs font-mono uppercase text-slate-300 mb-2 font-bold flex items-center gap-1.5">
-                        <UserIcon className="w-4 h-4 text-[#00E575]" />
+                        <MessageSquare className="w-4 h-4 text-[#00E575]" />
                         <span>2. Discord Username</span>
                       </label>
                       <input
@@ -1210,6 +1240,26 @@ export default function DashboardApp() {
                       />
                     </div>
                   </div>
+
+                  {/* MANUAL TWEET TEXT INPUT FALLBACK */}
+                  {showManualTextInput && (
+                    <div className="bg-[#051109] border border-amber-500/40 p-4 font-mono text-xs space-y-2">
+                      <label className="block text-xs font-mono uppercase text-amber-400 font-bold">
+                        ⚠️ Paste Tweet Text Content
+                      </label>
+                      <textarea
+                        required
+                        rows={4}
+                        value={manualText}
+                        onChange={(e) => setManualText(e.target.value)}
+                        placeholder="Paste the exact text of your tweet here"
+                        className="w-full bg-[#040705] border border-amber-500/30 px-3 py-2 text-xs font-mono text-white placeholder-slate-600 focus:outline-none focus:border-[#00E575]"
+                      />
+                      <p className="text-[10px] text-slate-400 leading-normal">
+                        Note: AI will evaluate this text content and verify its authenticity against your transaction hash.
+                      </p>
+                    </div>
+                  )}
 
                   {/* RITUAL WALLET FEE ESCROW SECTION */}
                   <div className="bg-[#040705] border border-[#00E575]/30 p-4 font-mono text-xs space-y-3">
