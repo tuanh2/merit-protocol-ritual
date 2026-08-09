@@ -483,7 +483,7 @@ export async function depositToRitualWallet(amountEth: string, lockBlocks: numbe
     abi: RITUAL_WALLET_ABI as any,
     functionName: 'deposit',
     args: [BigInt(lockBlocks)],
-    value: parseEther(amountEth),
+    value: parseEther(amountEth.replace(',', '.')),
   } as any);
 
   return hash;
