@@ -439,9 +439,8 @@ export async function submitEntryOnChain(contestId: number, contentUrl: string, 
     abi: MERIT_PROTOCOL_ABI,
     functionName: 'submitContestEntry',
     args: [BigInt(contestId), contentUrl, fetchedText],
-    maxPriorityFeePerGas: parseEther('0.0000000015'),
-    maxFeePerGas: parseEther('0.000000003'),
-  });
+    gas: 500000n, // Force 500,000 gas limit to prevent Out-Of-Gas reverts during TEE precompile simulation
+  } as any);
 
   return hash;
 }
@@ -485,8 +484,6 @@ export async function depositToRitualWallet(amountEth: string, lockBlocks: numbe
     functionName: 'deposit',
     args: [BigInt(lockBlocks)],
     value: parseEther(amountEth),
-    maxPriorityFeePerGas: parseEther('0.0000000015'),
-    maxFeePerGas: parseEther('0.000000003'),
   } as any);
 
   return hash;
@@ -544,8 +541,6 @@ export async function createContestOnChain(
       abi: ERC20_ABI,
       functionName: 'approve',
       args: [addresses.protocol, prizeWei],
-      maxPriorityFeePerGas: parseEther('0.0000000015'),
-      maxFeePerGas: parseEther('0.000000003'),
     });
     await publicClient.waitForTransactionReceipt({ hash: approveHash });
   }
@@ -577,8 +572,6 @@ export async function createContestOnChain(
       1n,
       "0x0000000000000000000000000000000000000000000000000000000000000001",
     ],
-    maxPriorityFeePerGas: parseEther('0.0000000015'),
-    maxFeePerGas: parseEther('0.000000003'),
   });
 
   return hash;

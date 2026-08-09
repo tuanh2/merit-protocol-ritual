@@ -124,6 +124,8 @@ export default function DashboardApp() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionStatus, setSubmissionStatus] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
+  const [manualText, setManualText] = useState('');
+  const [showManualTextInput, setShowManualTextInput] = useState(false);
 
   // RitualWallet Integration
   const [ritualWalletBalance, setRitualWalletBalance] = useState<string>('0.0');
@@ -238,20 +240,34 @@ export default function DashboardApp() {
     const activeItem = activeModalItem.item;
     const isContest = activeModalItem.type === 'CONTEST';
 
-    // 1. REAL Fetch: Get actual tweet text via Vercel Edge Function → Twitter oEmbed API
     let fetchedText = '';
-    try {
-      setSubmissionStatus('FETCHING_POST_CONTENT');
-      const fetchRes = await fetch(`/api/fetch-tweet?url=${encodeURIComponent(submissionUrl)}`);
-      if (fetchRes.ok) {
-        const fetchData = await fetchRes.json();
-        fetchedText = fetchData.text || '';
+    if (showManualTextInput) {
+      if (!manualText || manualText.trim().split(/\s+/).length < 3) {
+        alert("Please paste the actual tweet text first.");
+        setIsSubmitting(false);
+        setSubmissionStatus(null);
+        return;
       }
-    } catch (_) {}
+      fetchedText = manualText;
+    } else {
+      // 1. REAL Fetch: Get actual tweet text via Vercel Edge Function → Twitter oEmbed API
+      try {
+        setSubmissionStatus('FETCHING_POST_CONTENT');
+        const fetchRes = await fetch(`/api/fetch-tweet?url=${encodeURIComponent(submissionUrl)}`);
+        if (fetchRes.ok) {
+          const fetchData = await fetchRes.json();
+          fetchedText = fetchData.text || '';
+        }
+      } catch (_) {}
 
-    // Fallback nếu oEmbed fail (X private post, API down, etc.)
-    if (!fetchedText || fetchedText.trim().split(/\s+/).length < 3) {
-      fetchedText = `[Auto-fetched from ${submissionUrl}] Ritual AI precompile post on #RitualTestnet by @Ritual contributor.`;
+      // Fallback if oEmbed fails (X blocks direct server fetches)
+      if (!fetchedText || fetchedText.trim().split(/\s+/).length < 3) {
+        setShowManualTextInput(true);
+        setIsSubmitting(false);
+        setSubmissionStatus(null);
+        alert("Unable to fetch tweet text automatically due to X rate limiting or restrictions. Please paste the exact text of your tweet in the box that just appeared to verify.");
+        return;
+      }
     }
 
     // 2. REAL AI Scoring: Call OpenRouter via Vercel Edge Function with actual Barem criteria
@@ -1154,7 +1170,11 @@ export default function DashboardApp() {
               </div>
 
               <button
-                onClick={() => setActiveModalItem(null)}
+                onClick={() => {
+                  setActiveModalItem(null);
+                  setShowManualTextInput(false);
+                  setManualText('');
+                }}
                 className="text-slate-400 hover:text-white px-2 py-1 border border-[#00E575]/30 text-xs font-bold uppercase"
               >
                 CLOSE
@@ -1220,6 +1240,26 @@ export default function DashboardApp() {
                       />
                     </div>
                   </div>
+
+                  {/* MANUAL TWEET TEXT INPUT FALLBACK */}
+                  {showManualTextInput && (
+                    <div className="bg-[#051109] border border-amber-500/40 p-4 font-mono text-xs space-y-2">
+                      <label className="block text-xs font-mono uppercase text-amber-400 font-bold">
+                        ⚠️ Paste Tweet Text Content
+                      </label>
+                      <textarea
+                        required
+                        rows={4}
+                        value={manualText}
+                        onChange={(e) => setManualText(e.target.value)}
+                        placeholder="Paste the exact text of your tweet here (must contain @Ritual and #RitualTestnet)"
+                        className="w-full bg-[#040705] border border-amber-500/30 px-3 py-2 text-xs font-mono text-white placeholder-slate-600 focus:outline-none focus:border-[#00E575]"
+                      />
+                      <p className="text-[10px] text-slate-400 leading-normal">
+                        Note: AI will evaluate this text content and verify its authenticity against your transaction hash.
+                      </p>
+                    </div>
+                  )}
 
                   {/* RITUAL WALLET FEE ESCROW SECTION */}
                   <div className="bg-[#040705] border border-[#00E575]/30 p-4 font-mono text-xs space-y-3">
