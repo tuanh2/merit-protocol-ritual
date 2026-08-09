@@ -1318,11 +1318,19 @@ export default function DashboardApp() {
 
                   <button
                     type="submit"
-                    disabled={isSubmitting}
-                    className="btn-ritual-sharp h-13 px-8 text-xs font-mono uppercase tracking-wider flex items-center justify-center gap-2 font-bold w-full"
+                    disabled={isSubmitting || Number(ritualWalletBalance) < 0.02}
+                    className={`btn-ritual-sharp h-13 px-8 text-xs font-mono uppercase tracking-wider flex items-center justify-center gap-2 font-bold w-full ${
+                      Number(ritualWalletBalance) < 0.02 ? 'opacity-50 cursor-not-allowed bg-slate-800/80 border-slate-700 text-slate-500' : ''
+                    }`}
                   >
                     <Send className="w-4 h-4" />
-                    <span>{isSubmitting ? "Signing and Submitting to Chain" : `Sign Wallet and Submit Entry`}</span>
+                    <span>
+                      {isSubmitting 
+                        ? "Signing and Submitting to Chain" 
+                        : Number(ritualWalletBalance) < 0.02 
+                          ? "Inference Locked (Deposit Escrow to Unlock)" 
+                          : "Sign Wallet and Submit Entry"}
+                    </span>
                   </button>
                 </form>
 
