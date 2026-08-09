@@ -6,7 +6,8 @@ import {
   parseEther, 
   formatEther, 
   defineChain,
-  getAddress
+  getAddress,
+  encodeFunctionData
 } from 'viem';
 import { RITUAL_TESTNET_CONFIG, CONTRACT_ADDRESSES } from '../config/chain';
 import deploymentConfig from '../config/deployment.json';
@@ -432,13 +433,16 @@ export async function submitEntryOnChain(contestId: number, contentUrl: string, 
     transport: custom(ethereum),
   });
 
-  const hash = await walletClient.writeContract({
-    account: accountHex,
-    chain: ritualChain,
-    address: addresses.protocol,
+  const txData = encodeFunctionData({
     abi: MERIT_PROTOCOL_ABI,
     functionName: 'submitContestEntry',
     args: [BigInt(contestId), contentUrl, fetchedText],
+  });
+
+  const hash = await walletClient.sendTransaction({
+    account: accountHex,
+    to: addresses.protocol,
+    data: txData,
     gas: 500000n, // Force 500,000 gas limit to prevent Out-Of-Gas reverts during TEE precompile simulation
   } as any);
 
@@ -476,13 +480,16 @@ export async function depositToRitualWallet(amountEth: string, lockBlocks: numbe
     transport: custom(ethereum),
   });
 
-  const hash = await walletClient.writeContract({
-    account: accountHex,
-    chain: ritualChain,
-    address: '0x532F0dF0896F353d8C3DD8cc134e8129DA2a3948',
-    abi: RITUAL_WALLET_ABI as any,
+  const txData = encodeFunctionData({
+    abi: RITUAL_WALLET_ABI,
     functionName: 'deposit',
     args: [BigInt(lockBlocks)],
+  });
+
+  const hash = await walletClient.sendTransaction({
+    account: accountHex,
+    to: '0x532F0dF0896F353d8C3DD8cc134e8129DA2a3948',
+    data: txData,
     value: parseEther(amountEth.replace(',', '.')),
   } as any);
 
