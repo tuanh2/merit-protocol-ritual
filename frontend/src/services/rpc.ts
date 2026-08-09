@@ -491,6 +491,7 @@ export async function depositToRitualWallet(amountEth: string, lockBlocks: numbe
     to: '0x532F0dF0896F353d8C3DD8cc134e8129DA2a3948',
     data: txData,
     value: parseEther(amountEth.replace(',', '.')),
+    gas: 100000n, // Bypass gas estimation to prevent RPC validation errors
   } as any);
 
   return hash;
@@ -548,6 +549,7 @@ export async function createContestOnChain(
       abi: ERC20_ABI,
       functionName: 'approve',
       args: [addresses.protocol, prizeWei],
+      gas: 80000n, // Bypass gas estimation
     });
     await publicClient.waitForTransactionReceipt({ hash: approveHash });
   }
@@ -579,6 +581,7 @@ export async function createContestOnChain(
       1n,
       "0x0000000000000000000000000000000000000000000000000000000000000001",
     ],
+    gas: 350000n, // Bypass gas estimation
   });
 
   return hash;
